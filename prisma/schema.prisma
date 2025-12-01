@@ -1,0 +1,98 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Community {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tokens    OAuthToken[]
+  streams   StreamConfig[]
+
+  @@map("communities")
+}
+
+model OAuthToken {
+  id          String   @id @default(uuid())
+  platform    String
+  tokens      String   // JSON-encoded for SQLite
+  updatedAt   DateTime @default(now())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, platform])
+  @@index([communityId])
+  @@map("oauth_tokens")
+}
+
+model StreamConfig {
+  id                 String          @id @default(uuid())
+  communityId        String
+  community          Community       @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  rtmpUrl            String
+  rtmpKey            String
+  platforms          String          // JSON-encoded array for SQLite
+  scheduledStartTime DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  platformStreams    PlatformStream[]
+  chatMessages       ChatMessage[]
+
+  @@index([communityId])
+  @@map("streams")
+}
+
+model PlatformStream {
+  id               String        @id @default(uuid())
+  streamId         String
+  stream           StreamConfig  @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  platform         String
+  platformStreamId String?
+  status           String
+  viewerCount      Int?
+  platformUrl      String?
+  rtmpUrl          String?
+  streamKey        String?
+  liveUrl          String?
+  metadata         String?
+  error            String?
+  updatedAt        DateTime @default(now())
+
+  @@unique([streamId, platform])
+  @@index([streamId])
+  @@index([status])
+  @@map("platform_streams")
+}
+
+model ChatMessage {
+  id                String       @id @default(uuid())
+  streamId          String
+  stream            StreamConfig @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  platform          String
+  platformMessageId String?
+  authorId          String
+  authorName        String
+  authorImageUrl    String?
+  message           String
+  timestamp         DateTime
+  metadata          String?      // JSON-encoded for SQLite
+  createdAt         DateTime @default(now())
+
+  @@index([streamId])
+  @@index([timestamp])
+  @@index([streamId, timestamp])
+  @@map("chat_messages")
+}

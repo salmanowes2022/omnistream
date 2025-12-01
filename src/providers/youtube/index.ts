@@ -17,6 +17,39 @@ import { PlatformError, UnsupportedFeatureError } from '../../core/errors.js';
 import { config } from '../../utils/config.js';
 import { logger } from '../../utils/logger.js';
 
+interface AxiosLikeError {
+  response?: {
+    data?: {
+      error?: { message?: string; errors?: Array<{ message?: string }> } | string;
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
+const parseYouTubeError = (error: unknown): string => {
+  const err = error as AxiosLikeError;
+  const apiErrorObj = (err.response?.data as { error?: any; message?: string } | undefined)?.error;
+  const apiMessage =
+    typeof apiErrorObj === 'string'
+      ? apiErrorObj
+      : apiErrorObj?.message ||
+        (Array.isArray(apiErrorObj?.errors) ? apiErrorObj.errors[0]?.message : undefined);
+  const message =
+    apiMessage || (err.response?.data as { message?: string } | undefined)?.message || err.message;
+  if (message) {
+    return message;
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (err.response?.status) {
+    return `HTTP ${err.response.status}`;
+  }
+  return 'Unknown YouTube error';
+};
+
 export class YouTubeProvider implements StreamProvider {
   readonly platform = Platform.YOUTUBE;
 
@@ -30,7 +63,7 @@ export class YouTubeProvider implements StreamProvider {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope:
-        'https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/youtube.readonly',
+        'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.force-ssl',
       access_type: 'offline',
       prompt: 'consent',
       state: communityId,
@@ -155,10 +188,16 @@ export class YouTubeProvider implements StreamProvider {
         },
       });
 
+      // Extract RTMP ingestion info from the stream response
+      const ingestionInfo = streamResponse.data.cdn?.ingestionInfo;
+      const rtmpUrl = ingestionInfo?.ingestionAddress;
+      const streamKey = ingestionInfo?.streamName;
+
       logger.info('YouTube stream created', {
         communityId,
         broadcastId,
         streamId,
+        rtmpUrl,
       });
 
       return {
@@ -166,10 +205,17 @@ export class YouTubeProvider implements StreamProvider {
         platformStreamId: broadcastId,
         streamUrl: `https://www.youtube.com/watch?v=${broadcastId}`,
         status: StreamStatus.SCHEDULED,
+        rtmpUrl,
+        streamKey,
+        metadata: {
+          youtubeStreamId: streamId,
+          broadcastId,
+        },
       };
     } catch (error) {
-      logger.error('YouTube stream creation failed', error);
-      throw new PlatformError('YouTube', 'Failed to create stream', 500, error);
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube stream creation failed', { error: reason });
+      throw new PlatformError('YouTube', `Failed to create stream: ${reason}`, 500, error);
     }
   }
 
@@ -186,15 +232,19 @@ export class YouTubeProvider implements StreamProvider {
 
       logger.info('YouTube stream started', { platformStreamId });
 
+      const liveUrl = `https://www.youtube.com/watch?v=${platformStreamId}`;
+
       return {
         platform: Platform.YOUTUBE,
         platformStreamId,
-        streamUrl: `https://www.youtube.com/watch?v=${platformStreamId}`,
+        streamUrl: liveUrl,
+        liveUrl,
         status: StreamStatus.LIVE,
       };
     } catch (error) {
-      logger.error('YouTube stream start failed', error);
-      throw new PlatformError('YouTube', 'Failed to start stream', 500, error);
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube stream start failed', { error: reason });
+      throw new PlatformError('YouTube', `Failed to start stream: ${reason}`, 500, error);
     }
   }
 
@@ -217,8 +267,9 @@ export class YouTubeProvider implements StreamProvider {
         status: StreamStatus.ENDED,
       };
     } catch (error) {
-      logger.error('YouTube stream stop failed', error);
-      throw new PlatformError('YouTube', 'Failed to stop stream', 500, error);
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube stream stop failed', { error: reason });
+      throw new PlatformError('YouTube', `Failed to stop stream: ${reason}`, 500, error);
     }
   }
 
@@ -256,18 +307,22 @@ export class YouTubeProvider implements StreamProvider {
           status = StreamStatus.IDLE;
       }
 
+      const watchUrl = `https://www.youtube.com/watch?v=${platformStreamId}`;
+
       return {
         platform: Platform.YOUTUBE,
         platformStreamId,
-        streamUrl: `https://www.youtube.com/watch?v=${platformStreamId}`,
+        streamUrl: watchUrl,
+        liveUrl: status === StreamStatus.LIVE ? watchUrl : undefined,
         status,
         viewerCount: broadcast.statistics?.concurrentViewers
           ? parseInt(broadcast.statistics.concurrentViewers, 10)
           : undefined,
       };
     } catch (error) {
-      logger.error('YouTube stream status check failed', error);
-      throw new PlatformError('YouTube', 'Failed to get stream status', 500, error);
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube stream status check failed', { error: reason });
+      throw new PlatformError('YouTube', `Failed to get stream status: ${reason}`, 500, error);
     }
   }
 

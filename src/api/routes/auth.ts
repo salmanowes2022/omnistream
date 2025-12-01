@@ -109,12 +109,38 @@ router.get('/:platform/callback', async (req: Request, res: Response, next: Next
 
     logger.info('OAuth tokens saved', { communityId, platform });
 
+    // Send HTML with postMessage to notify parent window
     res.send(`
         <html>
+          <head>
+            <title>OAuth Success - Omnistream</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              h1 { color: #4CAF50; }
+            </style>
+          </head>
           <body>
-            <h1>Authorization Successful!</h1>
+            <h1>✅ Authorization Successful!</h1>
             <p>You have successfully connected ${platform} to your community.</p>
-            <p>You can close this window now.</p>
+            <p>This window will close automatically...</p>
+            <script>
+              // Notify the parent window if opened in popup
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({
+                  type: 'oauth-success',
+                  platform: '${platform}',
+                  code: '${code}',
+                  state: '${communityId}'
+                }, '*');
+
+                // Auto-close after 2 seconds
+                setTimeout(() => {
+                  window.close();
+                }, 2000);
+              } else {
+                document.body.innerHTML += '<p><button onclick="window.close()">Close Window</button></p>';
+              }
+            </script>
           </body>
         </html>
       `);
@@ -141,14 +167,17 @@ router.get('/:platform/status', async (req: Request, res: Response, next: NextFu
 
     // Check if OAuth token exists
     const token = await db.getOAuthToken(communityId, platform);
+    const isConnected = token !== null;
+
+    logger.info('OAuth status check', { platform, communityId, connected: isConnected });
 
     res.json({
       success: true,
-      connected: token !== null,
       data: {
         platform,
         communityId,
-        hasToken: token !== null,
+        connected: isConnected,
+        hasToken: isConnected,
       },
     });
   } catch (error) {

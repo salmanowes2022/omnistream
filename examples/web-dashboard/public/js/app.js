@@ -1,12 +1,16 @@
 // Global state
 let communityData = null;
-let communityId = localStorage.getItem('omnistream_community_id');
+let communityId = null;
 let platforms = [];
 let streams = [];
 let streamRefreshInterval = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
+    // Load community ID from localStorage
+    communityId = localStorage.getItem('omnistream_community_id');
+    console.log('🚀 Dashboard initialized. Community ID from localStorage:', communityId);
+
     if (communityId) {
         loadCommunityProfile();
     }
@@ -14,8 +18,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listen for OAuth callback messages
     window.addEventListener('message', (event) => {
         if (event.data.type === 'oauth-success') {
+            console.log('✅ OAuth success for platform:', event.data.platform);
+            console.log('📝 OAuth state (communityId):', event.data.state);
+            console.log('📝 Current dashboard communityId:', communityId);
+
             showStatus('platform-status', `Successfully connected to ${event.data.platform}!`, 'success');
-            loadPlatforms();
+            // Wait 1.5 seconds for backend to save tokens before checking status
+            setTimeout(() => {
+                console.log('🔄 Refreshing platform status...');
+                loadPlatforms();
+            }, 1500);
         }
     });
 });
@@ -36,7 +48,7 @@ async function createCommunity() {
             body: JSON.stringify({ name: communityName })
         });
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response, 'Create community');
 
         if (!response.ok || !data.success) {
             throw new Error(data.error || 'Failed to create community');
@@ -73,7 +85,7 @@ async function loginWithCommunityId() {
         // Verify community exists
         const response = await fetch(`/api/community/${inputCommunityId}`);
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response, 'Login');
 
         if (!response.ok || !data.success) {
             throw new Error(data.error || 'Invalid community ID');
@@ -120,9 +132,17 @@ async function loadCommunityProfile() {
     try {
         const response = await fetch(`/api/community/${communityId}`);
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response, 'Load community');
 
         if (!response.ok || !data.success) {
+            // If community not found, clear localStorage and show login
+            if (response.status === 404 || data.error?.includes('not found')) {
+                console.log('Community not found in database, clearing localStorage');
+                localStorage.removeItem('omnistream_community_id');
+                communityId = null;
+                showStatus('auth-status', 'Community not found. Please create a new community or login with a valid ID.', 'error');
+                return;
+            }
             throw new Error(data.error || 'Failed to load community');
         }
 
@@ -139,9 +159,12 @@ async function loadCommunityProfile() {
         loadPlatforms();
         loadStreams();
 
-        // Auto-refresh streams every 5 seconds
+        // Auto-refresh streams every 10 seconds
         if (!streamRefreshInterval) {
-            streamRefreshInterval = setInterval(loadStreams, 5000);
+            streamRefreshInterval = setInterval(() => {
+                loadStreams();
+                loadPlatforms();
+            }, 10000);
         }
     } catch (error) {
         showStatus('auth-status', error.message, 'error');
@@ -151,16 +174,32 @@ async function loadCommunityProfile() {
 
 // Platform OAuth functions
 async function loadPlatforms() {
+    const platformsToCheck = ['youtube', 'facebook', 'tiktok'];
+    console.log('Loading platform statuses for communityId:', communityId);
     try {
-        const response = await fetch(`/api/platforms?communityId=${communityId}`);
+        // Fetch actual OAuth status for each platform
+        const platformStatuses = await Promise.all(
+            platformsToCheck.map(async (platformName) => {
+                try {
+                    const statusResponse = await fetch(`/api/auth/${platformName}/status?communityId=${communityId}`);
+                    const statusData = await parseJsonResponse(statusResponse, `Status ${platformName}`);
+                    console.log(`${platformName} status response:`, statusData);
+                    return {
+                        name: platformName,
+                        connected: statusData.success && statusData.data && statusData.data.connected
+                    };
+                } catch (error) {
+                    console.error(`Failed to check ${platformName} status:`, error);
+                    return {
+                        name: platformName,
+                        connected: false
+                    };
+                }
+            })
+        );
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to load platforms');
-        }
-
-        platforms = data.platforms;
+        console.log('Final platform statuses:', platformStatuses);
+        platforms = platformStatuses;
         renderPlatforms();
         renderPlatformCheckboxes();
     } catch (error) {
@@ -214,7 +253,7 @@ function renderPlatformCheckboxes() {
 
     container.innerHTML = connectedPlatforms.map(platform => `
         <label class="platform-checkbox">
-            <input type="checkbox" name="platforms" value="${platform.name}" />
+            <input type="checkbox" class="platform-checkbox" name="platforms" value="${platform.name}" />
             <span>${platform.name}</span>
         </label>
     `).join('');
@@ -225,7 +264,7 @@ async function connectPlatform(platformName) {
         // Get the OAuth authorization URL
         const response = await fetch(`/api/auth/${platformName}/authorize?communityId=${communityId}`);
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response, 'Load streams');
 
         if (!response.ok || !data.success) {
             throw new Error(data.error || 'Failed to get authorization URL');
@@ -250,24 +289,62 @@ async function connectPlatform(platformName) {
 }
 
 function disconnectPlatform(platformName) {
-    // Note: Actual disconnect would need an API endpoint
-    showStatus('platform-status', `Disconnect functionality would be implemented via API`, 'info');
+    if (!communityId) {
+        showStatus('platform-status', 'Missing community ID', 'error');
+        return;
+    }
+
+    showStatus('platform-status', `Disconnecting ${platformName}...`, 'info');
+    fetch(`/api/auth/${platformName}?communityId=${communityId}`, {
+        method: 'DELETE'
+    }).then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to disconnect platform');
+        }
+        showToast(`${platformName} disconnected`, 'success');
+        showStatus('platform-status', `${platformName} disconnected`, 'success');
+        loadPlatforms();
+    }).catch((error) => {
+        showStatus('platform-status', error.message, 'error');
+    });
 }
 
 // Stream management functions
 async function loadStreams() {
-    try {
-        const response = await fetch(`/api/streams?communityId=${communityId}`);
+    if (!communityId) return;
 
+    try {
+        // Use the correct API endpoint with communityId as query parameter
+        const response = await fetch(`/api/streams?communityId=${communityId}`);
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-            throw new Error(data.error || 'Failed to load streams');
+            throw new Error(data.error?.message || data.error || 'Failed to load streams');
         }
 
         streams = data.data || [];
+
+        // Fetch detailed status for each stream
+        await Promise.all(streams.map(async (stream) => {
+            try {
+                const statusRes = await fetch(`/api/streams/${stream.id}?communityId=${communityId}`);
+                const statusData = await parseJsonResponse(statusRes, 'Stream status');
+                if (statusData.success && statusData.data) {
+                    if (statusData.data.stream) {
+                        Object.assign(stream, statusData.data.stream);
+                    }
+                    stream.platformStreams = statusData.data.platformStreams || [];
+                }
+            } catch (err) {
+                console.error(`Failed to fetch status for stream ${stream.id}:`, err);
+                stream.platformStreams = [];
+            }
+        }));
+
         renderStreams();
     } catch (error) {
+        console.error('Failed to load streams:', error);
         // Only show error if it's not a background refresh
         if (!streamRefreshInterval) {
             showStatus('stream-status', error.message, 'error');
@@ -284,17 +361,78 @@ function renderStreams() {
     }
 
     container.innerHTML = streams.map(stream => {
-        const isActive = stream.status === 'active';
+        const platformStreams = stream.platformStreams || [];
+        const hasActivePlatform = platformStreams.some(ps => ps.status === 'live');
+        const isStarting = platformStreams.some(ps => ps.status === 'starting');
+        const overallStatus = hasActivePlatform ? 'live' : (isStarting ? 'starting' : 'idle');
+        const cardStateClass = hasActivePlatform || isStarting ? 'active' : '';
         const platformTags = (stream.platforms || []).map(p =>
             `<span class="stream-platform-tag">${p}</span>`
         ).join('');
 
+        // Get platform statuses
+        const platformStatusHtml = platformStreams.length > 0 ? `
+            <div class="platform-status-section">
+                <h4>Platform Status:</h4>
+                ${platformStreams.map(ps => {
+                    const statusIcon = {
+                        'idle': '⚫',
+                        'scheduled': '⚪',
+                        'starting': '🟡',
+                        'live': '🔴',
+                        'stopping': '🟠',
+                        'error': '🔴'
+                    }[ps.status] || '⚪';
+
+                    const statusText = (ps.status || '').toUpperCase();
+                    const statusClass = ps.status === 'live'
+                        ? 'status-live'
+                        : ps.status === 'error'
+                            ? 'status-error'
+                            : ps.status === 'starting'
+                                ? 'status-starting'
+                                : '';
+                    const watchUrl = ps.liveUrl || ps.streamUrl;
+                    const rtmpDetails = ps.rtmpUrl || ps.streamKey
+                        ? `
+                            <div class="platform-rtmp">
+                                ${ps.rtmpUrl ? `
+                                    <div><strong>RTMP:</strong> <code style="font-size: 0.75em;">${escapeHtml(ps.rtmpUrl)}</code></div>
+                                ` : ''}
+                                ${ps.streamKey ? `
+                                    <div><strong>Stream Key:</strong> <code style="font-size: 0.75em;">${escapeHtml(ps.streamKey)}</code></div>
+                                ` : ''}
+                            </div>
+                        `
+                        : '';
+                    const errorText = ps.error
+                        ? `<div class="platform-error">⚠ ${escapeHtml(ps.error)}</div>`
+                        : '';
+
+                    return `
+                        <div class="platform-status-item ${statusClass}">
+                            <span class="platform-status-icon">${statusIcon}</span>
+                            <span class="platform-status-name">${escapeHtml(ps.platform || '')}</span>
+                            <span class="platform-status-text">${statusText || 'UNKNOWN'}</span>
+                            ${watchUrl ? `
+                                <a href="${escapeHtml(watchUrl)}" target="_blank" class="platform-live-url">
+                                    🔗 Watch
+                                </a>
+                            ` : ''}
+                            ${rtmpDetails}
+                            ${errorText}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        ` : '';
+
         return `
-            <div class="stream-card ${isActive ? 'active' : ''}">
+            <div class="stream-card ${cardStateClass}">
                 <div class="stream-header">
                     <div class="stream-title">${escapeHtml(stream.title)}</div>
-                    <span class="stream-badge ${isActive ? 'active' : 'idle'}">
-                        ${isActive ? '🔴 LIVE' : '⚫ Idle'}
+                    <span class="stream-badge ${overallStatus}">
+                        ${overallStatus === 'live' ? '🔴 LIVE' : overallStatus === 'starting' ? '🟡 Starting…' : '⚫ Idle'}
                     </span>
                 </div>
 
@@ -304,31 +442,64 @@ function renderStreams() {
 
                 <div class="stream-platforms">${platformTags}</div>
 
+                ${platformStatusHtml}
+
                 ${stream.rtmpUrl || stream.ingestUrl ? `
                     <div class="stream-ingest">
-                        <h4>RTMP Ingest URL:</h4>
-                        <code>${escapeHtml(stream.rtmpUrl || stream.ingestUrl)}</code>
+                        <h4>🎬 OBS Ingest Settings (Stream to Omnistream):</h4>
+                        <div style="margin-bottom: 10px;">
+                            <strong>Server:</strong>
+                            <code>${escapeHtml(stream.rtmpUrl || stream.ingestUrl)}</code>
+                        </div>
                         ${stream.rtmpKey || stream.streamKey ? `
-                            <h4 style="margin-top: 10px;">Stream Key:</h4>
-                            <code>${escapeHtml(stream.rtmpKey || stream.streamKey)}</code>
+                            <div>
+                                <strong>Stream Key:</strong>
+                                <code>${escapeHtml(stream.rtmpKey || stream.streamKey)}</code>
+                            </div>
                         ` : ''}
                     </div>
                 ` : ''}
 
+                ${platformStreams.length > 0 && platformStreams.some(ps => ps.rtmpUrl) ? `
+                    <div class="stream-ingest" style="background: rgba(79, 70, 229, 0.1); border-color: var(--primary-color);">
+                        <h4>📺 YouTube RTMP Settings (Direct to YouTube):</h4>
+                        ${platformStreams.filter(ps => ps.rtmpUrl).map(ps => `
+                            <div style="margin-bottom: 10px;">
+                                <strong>Platform:</strong> <span style="text-transform: capitalize;">${ps.platform}</span><br>
+                                <strong>Server:</strong>
+                                <code style="font-size: 0.75em;">${escapeHtml(ps.rtmpUrl)}</code>
+                            </div>
+                            ${ps.streamKey ? `
+                                <div>
+                                    <strong>Stream Key:</strong>
+                                    <code style="font-size: 0.75em;">${escapeHtml(ps.streamKey)}</code>
+                                </div>
+                            ` : ''}
+                        `).join('')}
+                        <p style="margin-top: 10px; font-size: 0.85em; color: var(--text-secondary);">
+                            💡 For testing: You can stream directly to YouTube using these settings
+                        </p>
+                    </div>
+                ` : ''}
+
+                <div class="stream-meta">
+                    <small>Created: ${new Date(stream.createdAt).toLocaleString()}</small>
+                </div>
+
                 <div class="stream-actions">
-                    ${!isActive ? `
-                        <button onclick="startStream('${stream.id}')" class="btn btn-success">
-                            ▶ Start Stream
-                        </button>
-                    ` : `
-                        <button onclick="stopStream('${stream.id}')" class="btn btn-danger">
+                    ${overallStatus === 'live' ? `
+                        <button id="stop-btn-${stream.id}" onclick="stopStream('${stream.id}')" class="btn btn-danger">
                             ⏹ Stop Stream
                         </button>
+                    ` : `
+                        <button id="start-btn-${stream.id}" onclick="startStream('${stream.id}')" class="btn btn-success" ${isStarting ? 'disabled' : ''}>
+                            ${isStarting ? '⏳ Starting...' : '▶ Start Stream'}
+                        </button>
                     `}
-                    <button onclick="refreshStream('${stream.id}')" class="btn btn-secondary">
+                    <button id="refresh-btn-${stream.id}" onclick="refreshStream('${stream.id}')" class="btn btn-secondary">
                         🔄 Refresh
                     </button>
-                    <button onclick="deleteStream('${stream.id}')" class="btn btn-danger">
+                    <button id="delete-btn-${stream.id}" onclick="deleteStream('${stream.id}')" class="btn btn-danger">
                         🗑 Delete
                     </button>
                 </div>
@@ -340,7 +511,8 @@ function renderStreams() {
 async function createStream() {
     const title = document.getElementById('stream-title').value.trim();
     const description = document.getElementById('stream-description').value.trim();
-    const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platforms"]:checked'))
+
+    const selectedPlatforms = Array.from(document.querySelectorAll('.platform-checkbox:checked'))
         .map(cb => cb.value);
 
     if (!title) {
@@ -364,32 +536,49 @@ async function createStream() {
                 title,
                 description,
                 platforms: selectedPlatforms,
-                rtmpUrl: 'rtmp://demo.omnistream.com/live',
+                rtmpUrl: 'rtmp://localhost:1935/live',
                 rtmpKey: `stream_${Date.now()}`
             })
         });
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response, 'Create stream');
 
         if (!response.ok || !data.success) {
             throw new Error(data.error || 'Failed to create stream');
         }
 
+        showToast('Stream created successfully! 🎬', 'success');
         showStatus('stream-status', 'Stream created successfully!', 'success');
 
         // Clear form
         document.getElementById('stream-title').value = '';
         document.getElementById('stream-description').value = '';
-        document.querySelectorAll('input[name="platforms"]').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.platform-checkbox').forEach(cb => cb.checked = false);
 
         // Reload streams
         loadStreams();
     } catch (error) {
+        showToast(error.message, 'error');
         showStatus('stream-status', error.message, 'error');
     }
 }
 
 async function startStream(streamId) {
+    const button = document.getElementById(`start-btn-${streamId}`);
+    if (!button) return;
+
+    // Optimistic UI update so the card shows "Starting..."
+    const targetStream = streams.find(s => s.id === streamId);
+    if (targetStream) {
+        targetStream.platformStreams = (targetStream.platformStreams || []).map(ps => ({
+            ...ps,
+            status: 'starting'
+        }));
+        renderStreams();
+    }
+
+    setButtonLoading(button, true);
+
     try {
         const response = await fetch(`/api/streams/${streamId}/start`, {
             method: 'POST',
@@ -399,20 +588,45 @@ async function startStream(streamId) {
             body: JSON.stringify({ communityId })
         });
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response, 'Start stream');
 
         if (!response.ok) {
             throw new Error(data.error || 'Failed to start stream');
         }
 
+        if (data.success && data.data) {
+            const updated = data.data;
+            streams = streams.map(s => s.id === streamId ? {
+                ...s,
+                ...(updated.stream || {}),
+                platformStreams: updated.platformStreams || s.platformStreams || []
+            } : s);
+            renderStreams();
+        }
+
+        showToast('Stream started successfully! 🎥', 'success');
         showStatus('stream-status', 'Stream started successfully!', 'success');
         loadStreams();
     } catch (error) {
+        showToast(error.message, 'error');
         showStatus('stream-status', error.message, 'error');
+        if (targetStream) {
+            targetStream.platformStreams = (targetStream.platformStreams || []).map(ps => ({
+                ...ps,
+                status: ps.status === 'starting' ? 'idle' : ps.status
+            }));
+            renderStreams();
+        }
+        setButtonLoading(button, false);
     }
 }
 
 async function stopStream(streamId) {
+    const button = document.getElementById(`stop-btn-${streamId}`);
+    if (!button) return;
+
+    setButtonLoading(button, true);
+
     try {
         const response = await fetch(`/api/streams/${streamId}/stop`, {
             method: 'POST',
@@ -422,33 +636,50 @@ async function stopStream(streamId) {
             body: JSON.stringify({ communityId })
         });
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response, 'Stop stream');
 
         if (!response.ok) {
             throw new Error(data.error || 'Failed to stop stream');
         }
 
+        if (data.success && data.data) {
+            const updated = data.data;
+            streams = streams.map(s => s.id === streamId ? {
+                ...s,
+                ...(updated.stream || {}),
+                platformStreams: updated.platformStreams || (s.platformStreams || []).map(ps => ({
+                    ...ps,
+                    status: 'ended'
+                }))
+            } : s);
+            renderStreams();
+        }
+
+        showToast('Stream stopped successfully! ⏹', 'success');
         showStatus('stream-status', 'Stream stopped successfully!', 'success');
         loadStreams();
     } catch (error) {
+        showToast(error.message, 'error');
         showStatus('stream-status', error.message, 'error');
+        setButtonLoading(button, false);
     }
 }
 
 async function refreshStream(streamId) {
+    const button = document.getElementById(`refresh-btn-${streamId}`);
+    if (!button) return;
+
+    setButtonLoading(button, true);
+
     try {
-        const response = await fetch(`/api/streams/${streamId}?communityId=${communityId}`);
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to refresh stream');
-        }
-
-        showStatus('stream-status', 'Stream refreshed!', 'success');
-        loadStreams();
+        showToast('Refreshing stream status...', 'info');
+        await loadStreams();
+        showToast('Stream refreshed! 🔄', 'success');
     } catch (error) {
+        showToast(error.message, 'error');
         showStatus('stream-status', error.message, 'error');
+    } finally {
+        // Button will be re-rendered by loadStreams
     }
 }
 
@@ -457,21 +688,31 @@ async function deleteStream(streamId) {
         return;
     }
 
+    const button = document.getElementById(`delete-btn-${streamId}`);
+    if (button) {
+        setButtonLoading(button, true);
+    }
+
     try {
         const response = await fetch(`/api/streams/${streamId}?communityId=${communityId}`, {
             method: 'DELETE'
         });
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response, 'Delete stream');
 
         if (!response.ok) {
             throw new Error(data.error || 'Failed to delete stream');
         }
 
+        showToast('Stream deleted successfully! 🗑', 'success');
         showStatus('stream-status', 'Stream deleted successfully!', 'success');
         loadStreams();
     } catch (error) {
+        showToast(error.message, 'error');
         showStatus('stream-status', error.message, 'error');
+        if (button) {
+            setButtonLoading(button, false);
+        }
     }
 }
 
@@ -480,17 +721,81 @@ function showStatus(elementId, message, type) {
     const element = document.getElementById(elementId);
     element.textContent = message;
     element.className = `status-message ${type}`;
+    element.style.display = 'block';
 
     // Auto-hide after 5 seconds for success/info messages
     if (type === 'success' || type === 'info') {
         setTimeout(() => {
             element.style.display = 'none';
         }, 5000);
+    } else if (type === 'error') {
+        // Keep error messages visible longer
+        setTimeout(() => {
+            element.style.display = 'none';
+        }, 10000);
     }
+}
+
+// Toast notification system
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    const icon = {
+        success: '✓',
+        error: '✗',
+        info: 'ℹ',
+        warning: '⚠'
+    }[type] || 'ℹ';
+
+    toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-message">${escapeHtml(message)}</span>`;
+
+    const container = document.getElementById('toast-container') || createToastContainer();
+    container.appendChild(toast);
+
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Auto-remove
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, type === 'error' ? 5000 : 3000);
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+    return container;
 }
 
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Safely parse JSON, throwing a clear error when the backend returns HTML/error pages
+async function parseJsonResponse(response, context = 'request') {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return response.json();
+    }
+
+    const text = await response.text();
+    const snippet = text ? text.slice(0, 200) : 'No body';
+    throw new Error(`${context} failed (status ${response.status}): non-JSON response: ${snippet}`);
+}
+
+// Button loading state management
+function setButtonLoading(button, loading) {
+    if (loading) {
+        button.disabled = true;
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = '<span class="spinner"></span> Loading...';
+    } else {
+        button.disabled = false;
+        button.innerHTML = button.dataset.originalText || button.innerHTML;
+    }
 }

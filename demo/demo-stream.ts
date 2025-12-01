@@ -38,7 +38,7 @@ interface PlatformStream {
   status: string;
   streamUrl?: string;
   rtmpUrl?: string;
-  rtmpKey?: string;
+  streamKey?: string;
   error?: string;
 }
 
@@ -67,7 +67,7 @@ class OmnistreamDemo {
     console.log('='.repeat(60));
   }
 
-  private async prompt(question: string): Promise<string> {
+  async prompt(question: string): Promise<string> {
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -140,6 +140,7 @@ class OmnistreamDemo {
     this.log('Step 3: Creating Multi-Platform Stream');
 
     const response = await this.client.post('/streams', {
+      communityId: this.community!.id,
       title,
       description,
       rtmpUrl,
@@ -165,10 +166,10 @@ class OmnistreamDemo {
     // Show RTMP ingestion details for each platform
     console.log('\n📺 RTMP Ingestion Details:');
     for (const ps of this.platformStreams) {
-      if (ps.rtmpUrl && ps.rtmpKey) {
+      if (ps.rtmpUrl && ps.streamKey) {
         console.log(`\n   ${ps.platform.toUpperCase()}:`);
         console.log(`   URL: ${ps.rtmpUrl}`);
-        console.log(`   Key: ${ps.rtmpKey.substring(0, 20)}...`);
+        console.log(`   Key: ${ps.streamKey.substring(0, 20)}...`);
       }
     }
   }
@@ -176,8 +177,11 @@ class OmnistreamDemo {
   async startStream(): Promise<void> {
     this.log('Step 4: Starting Stream on All Platforms');
 
-    const response = await this.client.post(`/streams/${this.stream!.id}/start`);
-    this.platformStreams = response.data.data;
+    const response = await this.client.post(`/streams/${this.stream!.id}/start`, {
+      communityId: this.community!.id,
+    });
+    this.stream = response.data.data.stream || this.stream;
+    this.platformStreams = response.data.data.platformStreams || [];
 
     this.log('Stream Start Initiated', {
       platformStreams: this.platformStreams.map((ps) => ({
@@ -197,7 +201,9 @@ class OmnistreamDemo {
   }
 
   async getStreamStatus(): Promise<void> {
-    const response = await this.client.get(`/streams/${this.stream!.id}`);
+    const response = await this.client.get(`/streams/${this.stream!.id}`, {
+      params: { communityId: this.community!.id },
+    });
     const data = response.data.data;
 
     console.log('\n📊 Stream Status:');
@@ -209,8 +215,11 @@ class OmnistreamDemo {
   async stopStream(): Promise<void> {
     this.log('Step 5: Stopping Stream on All Platforms');
 
-    const response = await this.client.post(`/streams/${this.stream!.id}/stop`);
-    this.platformStreams = response.data.data;
+    const response = await this.client.post(`/streams/${this.stream!.id}/stop`, {
+      communityId: this.community!.id,
+    });
+    this.stream = response.data.data.stream || this.stream;
+    this.platformStreams = response.data.data.platformStreams || [];
 
     this.log('Stream Stopped', {
       platformStreams: this.platformStreams.map((ps) => ({

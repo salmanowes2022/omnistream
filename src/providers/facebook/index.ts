@@ -28,7 +28,7 @@ export class FacebookProvider implements StreamProvider {
     const params = new URLSearchParams({
       client_id: config.facebook.appId,
       redirect_uri: redirectUri,
-      scope: 'pages_manage_posts,pages_read_engagement,pages_manage_engagement',
+      scope: 'pages_manage_posts,pages_read_engagement,pages_manage_engagement,pages_show_list,publish_video',
       state: communityId,
     });
 
@@ -64,7 +64,7 @@ export class FacebookProvider implements StreamProvider {
       return {
         accessToken: longLivedResponse.data.access_token,
         expiresAt: new Date(Date.now() + (longLivedResponse.data.expires_in || 5184000) * 1000),
-        scope: ['pages_manage_posts', 'pages_read_engagement', 'pages_manage_engagement'],
+        scope: ['pages_manage_posts', 'pages_read_engagement', 'pages_manage_engagement', 'pages_show_list', 'publish_video'],
       };
     } catch (error) {
       logger.error('Facebook token exchange failed', error);

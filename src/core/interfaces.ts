@@ -18,6 +18,7 @@ export enum Platform {
 export enum StreamStatus {
   IDLE = 'idle',
   SCHEDULED = 'scheduled',
+  STARTING = 'starting',
   LIVE = 'live',
   ENDED = 'ended',
   ERROR = 'error',
@@ -79,6 +80,10 @@ export interface PlatformStream {
   status: StreamStatus;
   viewerCount?: number;
   error?: string;
+  rtmpUrl?: string; // Platform's RTMP ingest URL (e.g., YouTube's rtmps://...)
+  streamKey?: string; // Platform's stream key for RTMP ingestion
+  liveUrl?: string; // Public watch URL when stream is live
+  metadata?: Record<string, unknown>; // Platform-specific metadata
 }
 
 /**

@@ -144,8 +144,8 @@ describe('Stream Service', () => {
 
       const results = await streamService.startStream(stream.id, community.id);
 
-      expect(results).toHaveLength(1);
-      expect(results[0].status).toBe(StreamStatus.LIVE);
+      expect(results.platformStreams).toHaveLength(1);
+      expect(results.platformStreams[0].status).toBe(StreamStatus.LIVE);
     });
 
     it('should throw NotFoundError if stream does not exist', async () => {
@@ -180,8 +180,8 @@ describe('Stream Service', () => {
 
       const results = await streamService.stopStream(stream.id, community.id);
 
-      expect(results).toHaveLength(1);
-      expect(results[0].status).toBe(StreamStatus.ENDED);
+      expect(results.platformStreams).toHaveLength(1);
+      expect(results.platformStreams[0].status).toBe(StreamStatus.ENDED);
     });
 
     it('should throw NotFoundError if stream does not exist', async () => {

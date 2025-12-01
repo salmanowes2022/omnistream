@@ -162,6 +162,50 @@ app.get('/api/auth/:platform/authorize', async (req, res) => {
   }
 });
 
+// Get OAuth status for a platform
+app.get('/api/auth/:platform/status', async (req, res) => {
+  try {
+    const communityId = req.query.communityId;
+    if (!communityId) {
+      return res.status(400).json({ success: false, error: 'Community ID required' });
+    }
+
+    const response = await axios.get(
+      `${OMNISTREAM_API_URL}/api/v1/auth/${req.params.platform}/status`,
+      {
+        params: { communityId },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to get auth status', success: false });
+  }
+});
+
+// Revoke/disconnect OAuth tokens for a platform
+app.delete('/api/auth/:platform', async (req, res) => {
+  try {
+    const communityId = req.query.communityId;
+    if (!communityId) {
+      return res.status(400).json({ success: false, error: 'Community ID required' });
+    }
+
+    const response = await axios.delete(
+      `${OMNISTREAM_API_URL}/api/v1/auth/${req.params.platform}`,
+      {
+        params: { communityId },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to disconnect platform', success: false });
+  }
+});
+
 app.post('/api/streams', async (req, res) => {
   try {
     const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/streams`, req.body);
@@ -186,6 +230,19 @@ app.get('/api/streams', async (req, res) => {
   }
 });
 
+app.get('/api/streams/community/:communityId', async (req, res) => {
+  try {
+    const response = await axios.get(
+      `${OMNISTREAM_API_URL}/api/v1/streams/community/${req.params.communityId}`
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch streams' });
+  }
+});
+
 app.get('/api/streams/:streamId', async (req, res) => {
   try {
     const response = await axios.get(
@@ -199,6 +256,22 @@ app.get('/api/streams/:streamId', async (req, res) => {
     res
       .status(error.response?.status || 500)
       .json(error.response?.data || { error: 'Failed to fetch stream' });
+  }
+});
+
+app.get('/api/streams/:streamId/status', async (req, res) => {
+  try {
+    const response = await axios.get(
+      `${OMNISTREAM_API_URL}/api/v1/streams/${req.params.streamId}/status`,
+      {
+        params: { communityId: req.query.communityId },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch stream status' });
   }
 });
 
@@ -252,7 +325,13 @@ app.get('/oauth/callback', (req, res) => {
   res.render('oauth-callback', { platform, code, state });
 });
 
+// Debug page
+app.get('/debug', (req, res) => {
+  res.render('debug');
+});
+
 app.listen(PORT, () => {
   console.log(`🌐 Omnistream Web Dashboard running at http://localhost:${PORT}`);
   console.log(`📡 Connected to Omnistream API at ${OMNISTREAM_API_URL}`);
+  console.log(`🔍 Debug page: http://localhost:${PORT}/debug`);
 });
