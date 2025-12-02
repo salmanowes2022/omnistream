@@ -38,10 +38,11 @@ export class PrismaDatabase {
   }
 
   // Community methods
-  async createCommunity(name: string): Promise<Community> {
+  async createCommunity(name: string, userId?: string): Promise<Community> {
     const community = await this.prisma.community.create({
       data: {
         name,
+        userId: userId || '00000000-0000-0000-0000-000000000000', // Default to system user
       },
     });
 
@@ -72,6 +73,20 @@ export class PrismaDatabase {
 
   async listCommunities(): Promise<Community[]> {
     const communities = await this.prisma.community.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return communities.map((c) => ({
+      id: c.id,
+      name: c.name,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    }));
+  }
+
+  async listCommunitiesByUser(userId: string): Promise<Community[]> {
+    const communities = await this.prisma.community.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
     });
 

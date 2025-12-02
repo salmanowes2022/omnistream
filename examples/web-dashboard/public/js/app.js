@@ -7,30 +7,246 @@ let streamRefreshInterval = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-    // Load community ID from localStorage
     communityId = localStorage.getItem('omnistream_community_id');
-    console.log('🚀 Dashboard initialized. Community ID from localStorage:', communityId);
 
     if (communityId) {
         loadCommunityProfile();
     }
 
-    // Listen for OAuth callback messages
     window.addEventListener('message', (event) => {
         if (event.data.type === 'oauth-success') {
-            console.log('✅ OAuth success for platform:', event.data.platform);
-            console.log('📝 OAuth state (communityId):', event.data.state);
-            console.log('📝 Current dashboard communityId:', communityId);
-
             showStatus('platform-status', `Successfully connected to ${event.data.platform}!`, 'success');
-            // Wait 1.5 seconds for backend to save tokens before checking status
             setTimeout(() => {
-                console.log('🔄 Refreshing platform status...');
                 loadPlatforms();
             }, 1500);
         }
     });
 });
+
+// Tab switching for authentication
+function switchAuthTab(tabName) {
+    // Hide all tab contents
+    document.querySelectorAll('.auth-tab-content').forEach(content => {
+        content.style.display = 'none';
+    });
+
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Show selected tab content
+    const tabContent = document.getElementById(`${tabName}-form`);
+    if (tabContent) {
+        tabContent.style.display = 'block';
+    }
+
+    // Add active class to selected tab
+    const tabBtn = document.getElementById(`tab-${tabName}`);
+    if (tabBtn) {
+        tabBtn.classList.add('active');
+    }
+
+    // Clear any previous status messages
+    const statusElement = document.getElementById('auth-status');
+    if (statusElement) {
+        statusElement.style.display = 'none';
+    }
+}
+
+// User login with JWT
+async function userLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (!email || !password) {
+        showStatus('auth-status', 'Please enter both email and password', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/user-auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await parseJsonResponse(response, 'User login');
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error?.message || data.error || 'Login failed');
+        }
+
+        // Store JWT token
+        localStorage.setItem('omnistream_jwt_token', data.data.token);
+        localStorage.setItem('omnistream_user_email', data.data.user.email);
+
+        showStatus('auth-status', 'Login successful!', 'success');
+
+        // Clear form
+        document.getElementById('login-email').value = '';
+        document.getElementById('login-password').value = '';
+
+        // Load user's first community or create one
+        setTimeout(async () => {
+            await loadUserCommunities();
+        }, 500);
+    } catch (error) {
+        showStatus('auth-status', error.message, 'error');
+    }
+}
+
+// User registration with JWT
+async function userRegister() {
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+    const passwordConfirm = document.getElementById('register-password-confirm').value;
+
+    if (!email || !password || !passwordConfirm) {
+        showStatus('auth-status', 'Please fill in all fields', 'error');
+        return;
+    }
+
+    if (password !== passwordConfirm) {
+        showStatus('auth-status', 'Passwords do not match', 'error');
+        return;
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+        showStatus('auth-status', 'Password must be at least 8 characters', 'error');
+        return;
+    }
+
+    if (!/[A-Z]/.test(password)) {
+        showStatus('auth-status', 'Password must contain at least one uppercase letter', 'error');
+        return;
+    }
+
+    if (!/[a-z]/.test(password)) {
+        showStatus('auth-status', 'Password must contain at least one lowercase letter', 'error');
+        return;
+    }
+
+    if (!/[0-9]/.test(password)) {
+        showStatus('auth-status', 'Password must contain at least one number', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/user-auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await parseJsonResponse(response, 'User registration');
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error?.message || data.error || 'Registration failed');
+        }
+
+        // Store JWT token
+        localStorage.setItem('omnistream_jwt_token', data.data.token);
+        localStorage.setItem('omnistream_user_email', data.data.user.email);
+
+        showStatus('auth-status', 'Account created successfully!', 'success');
+
+        // Clear form
+        document.getElementById('register-email').value = '';
+        document.getElementById('register-password').value = '';
+        document.getElementById('register-password-confirm').value = '';
+
+        // Create a default community for the user
+        setTimeout(async () => {
+            await createUserCommunity('My Streaming Community');
+        }, 500);
+    } catch (error) {
+        showStatus('auth-status', error.message, 'error');
+    }
+}
+
+// Load user's communities
+async function loadUserCommunities() {
+    const token = localStorage.getItem('omnistream_jwt_token');
+    if (!token) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/communities', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await parseJsonResponse(response, 'Load communities');
+
+        if (!response.ok || !data.success) {
+            // Token might be expired
+            if (response.status === 401) {
+                localStorage.removeItem('omnistream_jwt_token');
+                localStorage.removeItem('omnistream_user_email');
+                showStatus('auth-status', 'Session expired. Please login again.', 'error');
+                return;
+            }
+            throw new Error(data.error?.message || data.error || 'Failed to load communities');
+        }
+
+        // If user has communities, use the first one
+        if (data.data && data.data.length > 0) {
+            communityId = data.data[0].id;
+            localStorage.setItem('omnistream_community_id', communityId);
+            loadCommunityProfile();
+        } else {
+            // No communities, create a default one
+            await createUserCommunity('My Streaming Community');
+        }
+    } catch (error) {
+        showStatus('auth-status', error.message, 'error');
+    }
+}
+
+// Create community for authenticated user
+async function createUserCommunity(name) {
+    const token = localStorage.getItem('omnistream_jwt_token');
+    if (!token) {
+        showStatus('auth-status', 'Please login first', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/communities', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name })
+        });
+
+        const data = await parseJsonResponse(response, 'Create community');
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error?.message || data.error || 'Failed to create community');
+        }
+
+        // Save community ID
+        communityId = data.data.id;
+        localStorage.setItem('omnistream_community_id', communityId);
+
+        showStatus('auth-status', `Welcome! Your community "${name}" has been created.`, 'success');
+
+        // Load community profile
+        setTimeout(() => {
+            loadCommunityProfile();
+        }, 500);
+    } catch (error) {
+        showStatus('auth-status', error.message, 'error');
+    }
+}
 
 // Community creation (registration)
 async function createCommunity() {
@@ -114,6 +330,8 @@ function logout() {
     platforms = [];
     streams = [];
     localStorage.removeItem('omnistream_community_id');
+    localStorage.removeItem('omnistream_jwt_token');
+    localStorage.removeItem('omnistream_user_email');
 
     if (streamRefreshInterval) {
         clearInterval(streamRefreshInterval);
@@ -130,14 +348,24 @@ function logout() {
 
 async function loadCommunityProfile() {
     try {
-        const response = await fetch(`/api/community/${communityId}`);
+        // Check if we have a JWT token (authenticated user)
+        const token = localStorage.getItem('omnistream_jwt_token');
+
+        // Build headers - include auth token if available
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`/api/community/${communityId}`, { headers });
 
         const data = await parseJsonResponse(response, 'Load community');
 
         if (!response.ok || !data.success) {
             // If community not found, clear localStorage and show login
             if (response.status === 404 || data.error?.includes('not found')) {
-                console.log('Community not found in database, clearing localStorage');
                 localStorage.removeItem('omnistream_community_id');
                 communityId = null;
                 showStatus('auth-status', 'Community not found. Please create a new community or login with a valid ID.', 'error');
@@ -168,28 +396,27 @@ async function loadCommunityProfile() {
         }
     } catch (error) {
         showStatus('auth-status', error.message, 'error');
-        logout();
+        // Only logout if not authenticated, otherwise just show error
+        const token = localStorage.getItem('omnistream_jwt_token');
+        if (!token) {
+            logout();
+        }
     }
 }
 
-// Platform OAuth functions
 async function loadPlatforms() {
     const platformsToCheck = ['youtube', 'facebook', 'tiktok'];
-    console.log('Loading platform statuses for communityId:', communityId);
     try {
-        // Fetch actual OAuth status for each platform
         const platformStatuses = await Promise.all(
             platformsToCheck.map(async (platformName) => {
                 try {
                     const statusResponse = await fetch(`/api/auth/${platformName}/status?communityId=${communityId}`);
                     const statusData = await parseJsonResponse(statusResponse, `Status ${platformName}`);
-                    console.log(`${platformName} status response:`, statusData);
                     return {
                         name: platformName,
                         connected: statusData.success && statusData.data && statusData.data.connected
                     };
                 } catch (error) {
-                    console.error(`Failed to check ${platformName} status:`, error);
                     return {
                         name: platformName,
                         connected: false
@@ -198,7 +425,6 @@ async function loadPlatforms() {
             })
         );
 
-        console.log('Final platform statuses:', platformStatuses);
         platforms = platformStatuses;
         renderPlatforms();
         renderPlatformCheckboxes();
@@ -337,15 +563,12 @@ async function loadStreams() {
                     stream.platformStreams = statusData.data.platformStreams || [];
                 }
             } catch (err) {
-                console.error(`Failed to fetch status for stream ${stream.id}:`, err);
                 stream.platformStreams = [];
             }
         }));
 
         renderStreams();
     } catch (error) {
-        console.error('Failed to load streams:', error);
-        // Only show error if it's not a background refresh
         if (!streamRefreshInterval) {
             showStatus('stream-status', error.message, 'error');
         }

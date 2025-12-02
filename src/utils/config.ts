@@ -10,6 +10,7 @@ export interface Config {
   port: number;
   nodeEnv: string;
   databaseUrl: string;
+  jwtSecret: string;
 
   youtube: {
     clientId: string;
@@ -43,10 +44,13 @@ function getEnvVarOptional(key: string, defaultValue: string = ''): string {
   return process.env[key] || defaultValue;
 }
 
+const jwtSecret = getEnvVarOptional('JWT_SECRET', 'default-secret-change-in-production');
+
 export const config: Config = {
   port: parseInt(getEnvVarOptional('PORT', '3000'), 10),
   nodeEnv: getEnvVarOptional('NODE_ENV', 'development'),
   databaseUrl: getEnvVarOptional('DATABASE_URL', 'memory://'),
+  jwtSecret,
 
   youtube: {
     clientId: getEnvVarOptional('YOUTUBE_CLIENT_ID', ''),
@@ -76,7 +80,7 @@ export const config: Config = {
   },
 
   security: {
-    jwtSecret: getEnvVarOptional('JWT_SECRET', 'default-secret-change-in-production'),
+    jwtSecret,
   },
 
   rateLimit: {

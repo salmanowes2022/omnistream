@@ -17,24 +17,59 @@
         <div id="auth-section" class="section">
             <div class="card">
                 <h2>Get Started</h2>
-                <div class="auth-forms">
-                    <div class="form-group">
-                        <h3>Create New Community</h3>
-                        <input type="text" id="community-name" placeholder="Community Name (e.g., Gigaverse Gaming)" />
-                        <button onclick="createCommunity()" class="btn btn-primary">Create Community</button>
-                        <p class="info-text" style="font-size: 0.9em; margin-top: 10px;">
-                            A unique community ID will be generated automatically
-                        </p>
-                    </div>
-                    <div class="form-group">
-                        <h3>Use Existing Community ID</h3>
-                        <input type="text" id="login-communityid" placeholder="Your Community ID (UUID)" />
-                        <button onclick="loginWithCommunityId()" class="btn btn-primary">Login</button>
-                        <p class="info-text" style="font-size: 0.9em; margin-top: 10px;">
-                            Enter your existing community ID to continue
-                        </p>
+
+                <!-- Tab Navigation -->
+                <div class="auth-tabs">
+                    <button id="tab-user-login" class="tab-btn active" onclick="switchAuthTab('user-login')">Login</button>
+                    <button id="tab-user-register" class="tab-btn" onclick="switchAuthTab('user-register')">Register</button>
+                    <button id="tab-community" class="tab-btn" onclick="switchAuthTab('community')">Community ID (Legacy)</button>
+                </div>
+
+                <!-- User Login Tab -->
+                <div id="user-login-form" class="auth-tab-content" style="display: block;">
+                    <h3>Login with Your Account</h3>
+                    <input type="email" id="login-email" placeholder="Email" />
+                    <input type="password" id="login-password" placeholder="Password" />
+                    <button onclick="userLogin()" class="btn btn-primary">Login</button>
+                    <p class="info-text" style="font-size: 0.9em; margin-top: 10px;">
+                        Don't have an account? Click the Register tab above
+                    </p>
+                </div>
+
+                <!-- User Register Tab -->
+                <div id="user-register-form" class="auth-tab-content" style="display: none;">
+                    <h3>Create Your Account</h3>
+                    <input type="email" id="register-email" placeholder="Email" />
+                    <input type="password" id="register-password" placeholder="Password (min 8 chars, 1 uppercase, 1 number)" />
+                    <input type="password" id="register-password-confirm" placeholder="Confirm Password" />
+                    <button onclick="userRegister()" class="btn btn-primary">Create Account</button>
+                    <p class="info-text" style="font-size: 0.9em; margin-top: 10px;">
+                        Your account will be secured with encrypted storage
+                    </p>
+                </div>
+
+                <!-- Community ID Tab (Legacy) -->
+                <div id="community-form" class="auth-tab-content" style="display: none;">
+                    <div class="auth-forms">
+                        <div class="form-group">
+                            <h3>Create New Community</h3>
+                            <input type="text" id="community-name" placeholder="Community Name (e.g., Gigaverse Gaming)" />
+                            <button onclick="createCommunity()" class="btn btn-primary">Create Community</button>
+                            <p class="info-text" style="font-size: 0.9em; margin-top: 10px;">
+                                A unique community ID will be generated automatically
+                            </p>
+                        </div>
+                        <div class="form-group">
+                            <h3>Use Existing Community ID</h3>
+                            <input type="text" id="login-communityid" placeholder="Your Community ID (UUID)" />
+                            <button onclick="loginWithCommunityId()" class="btn btn-primary">Login</button>
+                            <p class="info-text" style="font-size: 0.9em; margin-top: 10px;">
+                                Enter your existing community ID to continue
+                            </p>
+                        </div>
                     </div>
                 </div>
+
                 <div id="auth-status" class="status-message"></div>
             </div>
         </div>

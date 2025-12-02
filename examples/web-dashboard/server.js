@@ -57,8 +57,17 @@ app.get('/api/community/:communityId', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Community ID required' });
     }
 
+    // Check if request has auth token
+    const authHeader = req.headers.authorization;
+    const headers = {};
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+
     // List all communities and find the one with matching ID
-    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/communities`);
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/communities`, {
+      headers,
+    });
     const communities = response.data.data || [];
     const community = communities.find((c) => c.id === communityId);
 
@@ -71,6 +80,84 @@ app.get('/api/community/:communityId', async (req, res) => {
     res
       .status(error.response?.status || 500)
       .json(error.response?.data || { error: 'Failed to fetch community', success: false });
+  }
+});
+
+// User authentication proxy endpoints
+
+// User registration
+app.post('/api/v1/user-auth/register', async (req, res) => {
+  try {
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/user-auth/register`, req.body);
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Registration failed', success: false });
+  }
+});
+
+// User login
+app.post('/api/v1/user-auth/login', async (req, res) => {
+  try {
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/user-auth/login`, req.body);
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Login failed', success: false });
+  }
+});
+
+// Get current user
+app.get('/api/v1/user-auth/me', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/user-auth/me`, {
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to get user info', success: false });
+  }
+});
+
+// List user's communities
+app.get('/api/v1/communities', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/communities`, {
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch communities', success: false });
+  }
+});
+
+// Create community (authenticated)
+app.post('/api/v1/communities', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/communities`, req.body, {
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to create community', success: false });
   }
 });
 

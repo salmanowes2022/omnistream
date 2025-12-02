@@ -10,15 +10,48 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  socialAccounts SocialAccount[]
+  communities    Community[]
+
+  @@map("users")
+}
+
+model SocialAccount {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform     String    // youtube | telegram | x | facebook | tiktok
+  accessToken  String    // Encrypted
+  refreshToken String?   // Encrypted (optional)
+  expiresAt    DateTime?
+  extra        String?   // JSON-encoded extra data (channelId, username, etc.)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, platform])
+  @@index([userId])
+  @@map("social_accounts")
+}
+
 model Community {
   id        String   @id @default(uuid())
   name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tokens    OAuthToken[]
   streams   StreamConfig[]
 
+  @@index([userId])
   @@map("communities")
 }
 

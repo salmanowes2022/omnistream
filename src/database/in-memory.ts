@@ -23,7 +23,7 @@ class Database {
   private chatMessages: Map<string, ChatMessage[]> = new Map();
 
   // Community methods
-  async createCommunity(name: string): Promise<Community> {
+  async createCommunity(name: string, _userId?: string): Promise<Community> {
     const id = crypto.randomUUID();
     const community: Community = {
       id,
@@ -45,6 +45,11 @@ class Database {
   }
 
   async listCommunities(): Promise<Community[]> {
+    return Array.from(this.communities.values());
+  }
+
+  async listCommunitiesByUser(_userId: string): Promise<Community[]> {
+    // In-memory DB doesn't track userId, return all communities for compatibility
     return Array.from(this.communities.values());
   }
 

@@ -76,6 +76,56 @@ header h1 {
     color: var(--text-secondary);
 }
 
+/* Authentication tabs */
+.auth-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.3s ease;
+    position: relative;
+    bottom: -2px;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(79, 70, 229, 0.1);
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    font-weight: 600;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.auth-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .auth-forms {
     display: grid;
     grid-template-columns: 1fr 1fr;

@@ -17,6 +17,7 @@ import { ChatServer } from './websocket/chat-server.js';
 import communitiesRouter from './api/routes/communities.js';
 import authRouter from './api/routes/auth.js';
 import streamsRouter from './api/routes/streams.js';
+import userAuthRouter from './api/routes/user-auth.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -43,6 +44,7 @@ app.get('/dashboard', (_req, res) => {
 });
 
 // API routes
+app.use('/api/v1/user-auth', userAuthRouter);
 app.use('/api/v1/communities', communitiesRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/streams', streamsRouter);

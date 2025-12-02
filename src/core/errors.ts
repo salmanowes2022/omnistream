@@ -20,6 +20,12 @@ export class AuthenticationError extends OmnistreamError {
   }
 }
 
+export class UnauthorizedError extends OmnistreamError {
+  constructor(message: string = 'Unauthorized', details?: unknown) {
+    super(message, 401, details);
+  }
+}
+
 export class AuthorizationError extends OmnistreamError {
   constructor(message: string = 'Not authorized', details?: unknown) {
     super(message, 403, details);
@@ -35,6 +41,12 @@ export class ValidationError extends OmnistreamError {
 export class NotFoundError extends OmnistreamError {
   constructor(message: string = 'Resource not found', details?: unknown) {
     super(message, 404, details);
+  }
+}
+
+export class ConflictError extends OmnistreamError {
+  constructor(message: string = 'Resource conflict', details?: unknown) {
+    super(message, 409, details);
   }
 }
 
