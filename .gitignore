@@ -143,3 +143,15 @@ vite.config.ts.timestamp-*
 # Test artifacts
 playwright-report/
 test-results/
+
+# Database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+prisma/*.db
+prisma/*.db-journal
+
+# RTMP media files
+media/
+*.flv
