@@ -166,6 +166,8 @@ export default [
     rules: {
       '@typescript-eslint/require-await': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 
@@ -204,6 +206,22 @@ export default [
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-floating-promises': 'off',
+    },
+  },
+
+  // Scripts folder - JavaScript utility scripts
+  {
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-undef': 'off',
     },
   },
 ];

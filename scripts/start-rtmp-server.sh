@@ -8,4 +8,4 @@ echo ""
 echo "Listening on: rtmp://localhost:1935/live/<streamKey>"
 echo ""
 
-node rtmp-server.js
+node "$(dirname "$0")/rtmp-server.js"

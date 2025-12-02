@@ -19,9 +19,7 @@ const isHttpErrorLike = (err: unknown): err is HttpErrorLike => {
 };
 
 const isHttpErrorData = (data: unknown): data is HttpErrorData =>
-  !!data &&
-  typeof data === 'object' &&
-  ('error' in data || 'message' in data);
+  !!data && typeof data === 'object' && ('error' in data || 'message' in data);
 
 const extractApiMessage = (data?: HttpErrorData): string | undefined => {
   if (!data) return undefined;
@@ -58,10 +56,7 @@ const toErrorMessage = (err: unknown): string => {
 };
 
 export class StreamService {
-  private mergePlatformStream(
-    existing: PlatformStream,
-    updated: PlatformStream
-  ): PlatformStream {
+  private mergePlatformStream(existing: PlatformStream, updated: PlatformStream): PlatformStream {
     return {
       ...existing,
       ...updated,
@@ -176,6 +171,7 @@ export class StreamService {
         const startingState = this.mergePlatformStream(platformStream, {
           platform: platformStream.platform,
           platformStreamId: platformStream.platformStreamId,
+
           status: StreamStatus.STARTING,
         });
         await db.savePlatformStream(streamId, startingState);

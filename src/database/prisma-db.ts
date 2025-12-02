@@ -15,6 +15,21 @@ import {
 } from '../core/interfaces.js';
 import { NotFoundError } from '../core/errors.js';
 
+const parseJsonField = <T>(value: unknown): T | undefined => {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return undefined;
+    }
+  }
+  if (typeof value === 'object') {
+    return value as T;
+  }
+  return undefined;
+};
+
 export class PrismaDatabase {
   private prisma: PrismaClient;
 
@@ -95,11 +110,7 @@ export class PrismaDatabase {
     });
   }
 
-  async saveOAuthToken(
-    communityId: string,
-    platform: Platform,
-    tokens: OAuthToken
-  ): Promise<void> {
+  async saveOAuthToken(communityId: string, platform: Platform, tokens: OAuthToken): Promise<void> {
     await this.saveOAuthTokens({
       communityId,
       platform,
@@ -122,16 +133,20 @@ export class PrismaDatabase {
       throw new NotFoundError(`No OAuth tokens found for community ${communityId} on ${platform}`);
     }
 
-    const tokens = JSON.parse(tokenRecord.tokens) as {
+    const tokens = parseJsonField<{
       accessToken: string;
       refreshToken: string;
       expiresAt: string;
       scope: string[];
-    }; // SQLite: parse JSON string
+    }>(tokenRecord.tokens);
+
+    if (!tokens) {
+      throw new NotFoundError(`Invalid token data for community ${communityId} on ${platform}`);
+    }
 
     return {
       communityId: tokenRecord.communityId,
-      platform: platform as Platform,
+      platform,
       tokens: {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
@@ -171,7 +186,7 @@ export class PrismaDatabase {
         description: config.description,
         rtmpUrl: config.rtmpUrl,
         rtmpKey: config.rtmpKey,
-        platforms: JSON.stringify(config.platforms), // SQLite: store as JSON string
+        platforms: JSON.stringify(config.platforms) as any,
         scheduledStartTime: config.scheduledStartTime,
       },
     });
@@ -183,7 +198,7 @@ export class PrismaDatabase {
       description: stream.description || undefined,
       rtmpUrl: stream.rtmpUrl,
       rtmpKey: stream.rtmpKey,
-      platforms: JSON.parse(stream.platforms) as Platform[], // SQLite: parse JSON string
+      platforms: parseJsonField<Platform[]>(stream.platforms) || [],
       scheduledStartTime: stream.scheduledStartTime || undefined,
       createdAt: stream.createdAt,
       updatedAt: stream.updatedAt,
@@ -206,7 +221,7 @@ export class PrismaDatabase {
       description: stream.description || undefined,
       rtmpUrl: stream.rtmpUrl,
       rtmpKey: stream.rtmpKey,
-      platforms: JSON.parse(stream.platforms) as Platform[], // SQLite: parse JSON string
+      platforms: parseJsonField<Platform[]>(stream.platforms) || [],
       scheduledStartTime: stream.scheduledStartTime || undefined,
       createdAt: stream.createdAt,
       updatedAt: stream.updatedAt,
@@ -229,7 +244,7 @@ export class PrismaDatabase {
       description: stream.description || undefined,
       rtmpUrl: stream.rtmpUrl,
       rtmpKey: stream.rtmpKey,
-      platforms: JSON.parse(stream.platforms) as Platform[], // SQLite: parse JSON string
+      platforms: parseJsonField<Platform[]>(stream.platforms) || [],
       scheduledStartTime: stream.scheduledStartTime || undefined,
       createdAt: stream.createdAt,
       updatedAt: stream.updatedAt,
@@ -237,18 +252,17 @@ export class PrismaDatabase {
   }
 
   async updateStream(id: string, updates: Partial<StreamConfig>): Promise<StreamConfig> {
-    const updateData: any = {
-      title: updates.title,
-      description: updates.description,
-      rtmpUrl: updates.rtmpUrl,
-      rtmpKey: updates.rtmpKey,
-      scheduledStartTime: updates.scheduledStartTime,
+    const updateData: Record<string, any> = {
       updatedAt: new Date(),
     };
 
-    if (updates.platforms) {
-      updateData.platforms = JSON.stringify(updates.platforms);
-    }
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.rtmpUrl !== undefined) updateData.rtmpUrl = updates.rtmpUrl;
+    if (updates.rtmpKey !== undefined) updateData.rtmpKey = updates.rtmpKey;
+    if (updates.scheduledStartTime !== undefined)
+      updateData.scheduledStartTime = updates.scheduledStartTime;
+    if (updates.platforms !== undefined) updateData.platforms = JSON.stringify(updates.platforms);
 
     const stream = await this.prisma.streamConfig.update({
       where: { id },
@@ -262,7 +276,7 @@ export class PrismaDatabase {
       description: stream.description || undefined,
       rtmpUrl: stream.rtmpUrl,
       rtmpKey: stream.rtmpKey,
-      platforms: JSON.parse(stream.platforms) as Platform[], // SQLite: parse JSON string
+      platforms: parseJsonField<Platform[]>(stream.platforms) || [],
       scheduledStartTime: stream.scheduledStartTime || undefined,
       createdAt: stream.createdAt,
       updatedAt: stream.updatedAt,
@@ -282,7 +296,7 @@ export class PrismaDatabase {
       description: stream.description || undefined,
       rtmpUrl: stream.rtmpUrl,
       rtmpKey: stream.rtmpKey,
-      platforms: JSON.parse(stream.platforms) as Platform[], // SQLite: parse JSON string
+      platforms: parseJsonField<Platform[]>(stream.platforms) || [],
       scheduledStartTime: stream.scheduledStartTime || undefined,
       createdAt: stream.createdAt,
       updatedAt: stream.updatedAt,
@@ -307,27 +321,27 @@ export class PrismaDatabase {
       create: {
         streamId,
         platform: platformStream.platform,
-        platformStreamId: platformStream.platformStreamId,
+        platformStreamId: platformStream.platformStreamId || '',
         status: platformStream.status,
-        viewerCount: platformStream.viewerCount,
-        platformUrl: platformStream.streamUrl,
-        rtmpUrl: platformStream.rtmpUrl,
-        streamKey: platformStream.streamKey,
-        liveUrl: platformStream.liveUrl,
-        metadata: platformStream.metadata ? JSON.stringify(platformStream.metadata) : undefined,
-        error: platformStream.error,
+        viewerCount: platformStream.viewerCount ?? null,
+        platformUrl: platformStream.streamUrl ?? null,
+        rtmpUrl: platformStream.rtmpUrl ?? null,
+        streamKey: platformStream.streamKey ?? null,
+        liveUrl: platformStream.liveUrl ?? null,
+        metadata: platformStream.metadata ? JSON.stringify(platformStream.metadata) : null,
+        error: platformStream.error ?? null,
         updatedAt: new Date(),
       },
       update: {
-        platformStreamId: platformStream.platformStreamId,
+        platformStreamId: platformStream.platformStreamId || '',
         status: platformStream.status,
-        viewerCount: platformStream.viewerCount,
-        platformUrl: platformStream.streamUrl,
-        rtmpUrl: platformStream.rtmpUrl,
-        streamKey: platformStream.streamKey,
-        liveUrl: platformStream.liveUrl,
-        metadata: platformStream.metadata ? JSON.stringify(platformStream.metadata) : undefined,
-        error: platformStream.error,
+        viewerCount: platformStream.viewerCount ?? null,
+        platformUrl: platformStream.streamUrl ?? null,
+        rtmpUrl: platformStream.rtmpUrl ?? null,
+        streamKey: platformStream.streamKey ?? null,
+        liveUrl: platformStream.liveUrl ?? null,
+        metadata: platformStream.metadata ? JSON.stringify(platformStream.metadata) : null,
+        error: platformStream.error ?? null,
         updatedAt: new Date(),
       },
     });
@@ -338,18 +352,21 @@ export class PrismaDatabase {
       where: { streamId },
     });
 
-    return platformStreams.map((ps) => ({
-      platform: ps.platform as Platform,
-      platformStreamId: ps.platformStreamId || '',
-      streamUrl: ps.platformUrl || undefined,
-      rtmpUrl: ps.rtmpUrl || undefined,
-      streamKey: ps.streamKey || undefined,
-      liveUrl: ps.liveUrl || undefined,
-      status: ps.status as StreamStatus,
-      viewerCount: ps.viewerCount || undefined,
-      error: ps.error || undefined,
-      metadata: ps.metadata ? (JSON.parse(ps.metadata) as Record<string, unknown>) : undefined,
-    }));
+    return platformStreams.map((ps): PlatformStream => {
+      const record = ps as any;
+      return {
+        platform: record.platform as Platform,
+        platformStreamId: record.platformStreamId || '',
+        streamUrl: record.platformUrl || undefined,
+        rtmpUrl: record.rtmpUrl || undefined,
+        streamKey: record.streamKey || undefined,
+        liveUrl: record.liveUrl || undefined,
+        status: record.status as StreamStatus,
+        viewerCount: record.viewerCount || undefined,
+        error: record.error || undefined,
+        metadata: parseJsonField<Record<string, unknown>>(record.metadata),
+      };
+    });
   }
 
   async getPlatformStream(
@@ -369,19 +386,18 @@ export class PrismaDatabase {
       return undefined;
     }
 
+    const record = platformStream as any;
     return {
-      platform: platformStream.platform as Platform,
-      platformStreamId: platformStream.platformStreamId || '',
-      streamUrl: platformStream.platformUrl || undefined,
-      rtmpUrl: platformStream.rtmpUrl || undefined,
-      streamKey: platformStream.streamKey || undefined,
-      liveUrl: platformStream.liveUrl || undefined,
-      status: platformStream.status as StreamStatus,
-      viewerCount: platformStream.viewerCount || undefined,
-      error: platformStream.error || undefined,
-      metadata: platformStream.metadata
-        ? (JSON.parse(platformStream.metadata) as Record<string, unknown>)
-        : undefined,
+      platform: record.platform as Platform,
+      platformStreamId: record.platformStreamId || '',
+      streamUrl: record.platformUrl || undefined,
+      rtmpUrl: record.rtmpUrl || undefined,
+      streamKey: record.streamKey || undefined,
+      liveUrl: record.liveUrl || undefined,
+      status: record.status as StreamStatus,
+      viewerCount: record.viewerCount || undefined,
+      error: record.error || undefined,
+      metadata: parseJsonField<Record<string, unknown>>(record.metadata),
     };
   }
 
@@ -418,7 +434,7 @@ export class PrismaDatabase {
       },
     });
 
-    const metadata = chatMessage.metadata ? (JSON.parse(chatMessage.metadata) as { highlighted?: boolean }) : null; // SQLite: parse JSON string
+    const metadata = parseJsonField<{ highlighted?: boolean }>(chatMessage.metadata) || null; // SQLite/JSON: parse JSON value
 
     return {
       id: chatMessage.id,
@@ -443,7 +459,7 @@ export class PrismaDatabase {
     });
 
     return messages.map((msg) => {
-      const metadata = msg.metadata ? (JSON.parse(msg.metadata) as { highlighted?: boolean }) : null; // SQLite: parse JSON string
+      const metadata = parseJsonField<{ highlighted?: boolean }>(msg.metadata) || null; // SQLite/JSON: parse JSON value
       return {
         id: msg.id,
         streamId: msg.streamId,
@@ -471,7 +487,7 @@ export class PrismaDatabase {
       },
     });
 
-    const metadata = message.metadata ? (JSON.parse(message.metadata) as { highlighted?: boolean }) : null; // SQLite: parse JSON string
+    const metadata = parseJsonField<{ highlighted?: boolean }>(message.metadata) || null; // SQLite/JSON: parse JSON value
 
     return {
       id: message.id,

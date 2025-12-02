@@ -20,12 +20,12 @@ const config = {
     chunk_size: 60000,
     gop_cache: true,
     ping: 30,
-    ping_timeout: 60
+    ping_timeout: 60,
   },
   trans: {
     ffmpeg: '/usr/local/bin/ffmpeg', // Update this path if needed
-    tasks: []
-  }
+    tasks: [],
+  },
 };
 
 if (!process.env.DISABLE_HTTP) {
@@ -33,7 +33,7 @@ if (!process.env.DISABLE_HTTP) {
     port: HTTP_PORT,
     host: HTTP_HOST,
     allow_origin: '*',
-    mediaroot: './media'
+    mediaroot: './media',
   };
 } else {
   console.log('ℹ️ HTTP server disabled (set DISABLE_HTTP=0 to re-enable).');
@@ -46,7 +46,10 @@ const streamKeyMap = new Map();
 
 // Listen for stream publishing events
 nms.on('prePublish', async (id, StreamPath, args) => {
-  console.log('[NodeEvent on prePublish]', `id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`);
+  console.log(
+    '[NodeEvent on prePublish]',
+    `id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`
+  );
 
   // Extract stream key from path: /live/streamKey
   const streamKey = StreamPath.split('/')[2];
@@ -71,7 +74,9 @@ nms.on('prePublish', async (id, StreamPath, args) => {
       );
 
       if (statusResponse.data.success && statusResponse.data.data.platformStreams) {
-        const youtubeStream = statusResponse.data.data.platformStreams.find(ps => ps.platform === 'youtube');
+        const youtubeStream = statusResponse.data.data.platformStreams.find(
+          (ps) => ps.platform === 'youtube'
+        );
         if (youtubeStream && youtubeStream.rtmpUrl && youtubeStream.streamKey) {
           console.log(`🎬 Found YouTube destination: ${youtubeStream.rtmpUrl}`);
 
@@ -80,14 +85,16 @@ nms.on('prePublish', async (id, StreamPath, args) => {
             youtubeRtmpUrl: youtubeStream.rtmpUrl,
             youtubeStreamKey: youtubeStream.streamKey,
             streamId: stream.id,
-            communityId: stream.communityId
+            communityId: stream.communityId,
           });
 
           // Setup FFmpeg relay
           setupRelay(streamKey, youtubeStream.rtmpUrl, youtubeStream.streamKey);
 
           // Auto-transition YouTube broadcast to live after FFmpeg starts
-          console.log('⏳ Waiting 5 seconds for stream to stabilize before transitioning to live...');
+          console.log(
+            '⏳ Waiting 5 seconds for stream to stabilize before transitioning to live...'
+          );
           setTimeout(async () => {
             try {
               console.log(`🚀 Auto-starting YouTube broadcast for stream ${stream.id}...`);
@@ -117,7 +124,10 @@ nms.on('prePublish', async (id, StreamPath, args) => {
 });
 
 nms.on('donePublish', (id, StreamPath, args) => {
-  console.log('[NodeEvent on donePublish]', `id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`);
+  console.log(
+    '[NodeEvent on donePublish]',
+    `id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`
+  );
 
   const streamKey = StreamPath.split('/')[2];
   console.log(`❌ Stream ended for key: ${streamKey}`);
@@ -131,10 +141,13 @@ function setupRelay(localStreamKey, youtubeRtmpUrl, youtubeStreamKey) {
 
   // FFmpeg command to relay stream from local RTMP to YouTube
   const ffmpegArgs = [
-    '-i', `rtmp://localhost:1935/live/${localStreamKey}`,
-    '-c', 'copy', // Copy codec without re-encoding (faster)
-    '-f', 'flv',
-    `${youtubeRtmpUrl}/${youtubeStreamKey}`
+    '-i',
+    `rtmp://localhost:1935/live/${localStreamKey}`,
+    '-c',
+    'copy', // Copy codec without re-encoding (faster)
+    '-f',
+    'flv',
+    `${youtubeRtmpUrl}/${youtubeStreamKey}`,
   ];
 
   console.log(`🔄 Starting FFmpeg relay: ffmpeg ${ffmpegArgs.join(' ')}`);
