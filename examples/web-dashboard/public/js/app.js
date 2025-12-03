@@ -7,10 +7,30 @@ let streamRefreshInterval = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-    communityId = localStorage.getItem('omnistream_community_id');
+    const jwtToken = localStorage.getItem('omnistream_jwt_token');
 
-    if (communityId) {
-        loadCommunityProfile();
+    // If user has JWT token, show user platforms section and hide auth
+    if (jwtToken) {
+        // Clear old community ID - let loadUserCommunities() fetch the correct one
+        localStorage.removeItem('omnistream_community_id');
+        communityId = null;
+
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('user-platforms-section').style.display = 'block';
+
+        // Load user platforms
+        if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
+            window.userPlatforms.loadUserPlatforms();
+        }
+
+        // Load user's communities (this will fetch correct community for this user)
+        loadUserCommunities();
+    } else {
+        // Legacy mode - try to load old community ID if exists
+        communityId = localStorage.getItem('omnistream_community_id');
+        if (communityId) {
+            loadCommunityProfile();
+        }
     }
 
     window.addEventListener('message', (event) => {
@@ -87,6 +107,16 @@ async function userLogin() {
         document.getElementById('login-email').value = '';
         document.getElementById('login-password').value = '';
 
+        // Show user platforms section
+        document.getElementById('user-platforms-section').style.display = 'block';
+
+        // Load user platforms
+        if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
+            setTimeout(() => {
+                window.userPlatforms.loadUserPlatforms();
+            }, 500);
+        }
+
         // Load user's first community or create one
         setTimeout(async () => {
             await loadUserCommunities();
@@ -156,6 +186,16 @@ async function userRegister() {
         document.getElementById('register-email').value = '';
         document.getElementById('register-password').value = '';
         document.getElementById('register-password-confirm').value = '';
+
+        // Show user platforms section
+        document.getElementById('user-platforms-section').style.display = 'block';
+
+        // Load user platforms
+        if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
+            setTimeout(() => {
+                window.userPlatforms.loadUserPlatforms();
+            }, 500);
+        }
 
         // Create a default community for the user
         setTimeout(async () => {
@@ -340,6 +380,7 @@ function logout() {
 
     document.getElementById('auth-section').style.display = 'block';
     document.getElementById('profile-section').style.display = 'none';
+    document.getElementById('user-platforms-section').style.display = 'none';
     document.getElementById('platforms-section').style.display = 'none';
     document.getElementById('streams-section').style.display = 'none';
 
@@ -350,6 +391,26 @@ async function loadCommunityProfile() {
     try {
         // Check if we have a JWT token (authenticated user)
         const token = localStorage.getItem('omnistream_jwt_token');
+
+        // If no communityId is set, skip loading (user might not have created a community yet)
+        if (!communityId) {
+            console.log('No community ID set, skipping community profile load');
+
+            // Show UI for JWT authenticated users even without community
+            if (token) {
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('profile-section').style.display = 'none'; // Hide profile section
+                document.getElementById('user-platforms-section').style.display = 'block';
+                document.getElementById('platforms-section').style.display = 'none'; // Hide old platforms section
+                document.getElementById('streams-section').style.display = 'none'; // Hide streams section
+
+                // Load user platforms if logged in with JWT
+                if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
+                    window.userPlatforms.loadUserPlatforms();
+                }
+            }
+            return;
+        }
 
         // Build headers - include auth token if available
         const headers = {
@@ -364,10 +425,30 @@ async function loadCommunityProfile() {
         const data = await parseJsonResponse(response, 'Load community');
 
         if (!response.ok || !data.success) {
-            // If community not found, clear localStorage and show login
+            // If community not found, clear localStorage
             if (response.status === 404 || data.error?.includes('not found')) {
                 localStorage.removeItem('omnistream_community_id');
                 communityId = null;
+
+                // If user has JWT token, they're authenticated with new system - silently skip old community error
+                if (token) {
+                    console.log('Old community ID cleared. You can create a new community from the Community ID tab if needed.');
+
+                    // Show user platforms section even without community
+                    document.getElementById('auth-section').style.display = 'none';
+                    document.getElementById('profile-section').style.display = 'none';
+                    document.getElementById('user-platforms-section').style.display = 'block';
+                    document.getElementById('platforms-section').style.display = 'none';
+                    document.getElementById('streams-section').style.display = 'none';
+
+                    // Load user platforms
+                    if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
+                        window.userPlatforms.loadUserPlatforms();
+                    }
+                    return;
+                }
+
+                // Only show error if user is not authenticated with JWT (old system only)
                 showStatus('auth-status', 'Community not found. Please create a new community or login with a valid ID.', 'error');
                 return;
             }
@@ -381,8 +462,14 @@ async function loadCommunityProfile() {
 
         document.getElementById('auth-section').style.display = 'none';
         document.getElementById('profile-section').style.display = 'block';
+        document.getElementById('user-platforms-section').style.display = 'block';
         document.getElementById('platforms-section').style.display = 'block';
         document.getElementById('streams-section').style.display = 'block';
+
+        // Load user platforms if logged in with JWT
+        if (token && window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
+            window.userPlatforms.loadUserPlatforms();
+        }
 
         loadPlatforms();
         loadStreams();
@@ -395,11 +482,16 @@ async function loadCommunityProfile() {
             }, 10000);
         }
     } catch (error) {
-        showStatus('auth-status', error.message, 'error');
-        // Only logout if not authenticated, otherwise just show error
+        // Check if user has JWT token
         const token = localStorage.getItem('omnistream_jwt_token');
+
+        // Only show error if user is not authenticated with JWT
         if (!token) {
+            showStatus('auth-status', error.message, 'error');
             logout();
+        } else {
+            // Authenticated users - just log the error, don't show UI error
+            console.error('Community load error (non-critical for JWT users):', error.message);
         }
     }
 }

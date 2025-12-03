@@ -1,0 +1,328 @@
+/**
+ * Unified Platform Service
+ * Handles platform connections for Twitter, Telegram, and YouTube
+ */
+
+import { Platform } from '../interfaces.js';
+import { PlatformError, ValidationError } from '../errors.js';
+import { userService } from './user-service.js';
+import { twitterAdapter } from '../../platforms/twitter/adapter.js';
+import { telegramAdapter } from '../../platforms/telegram/adapter.js';
+import { youtubeAdapter } from '../../platforms/youtube/adapter.js';
+import { logger } from '../../utils/logger.js';
+
+export interface ConnectTwitterRequest {
+  userId: string;
+  code: string;
+  state: string;
+}
+
+export interface ConnectTelegramRequest {
+  userId: string;
+  botToken: string;
+  channelId: string;
+}
+
+export interface ConnectYouTubeRequest {
+  userId: string;
+  code: string;
+  redirectUri: string;
+}
+
+export interface PlatformConnectionInfo {
+  id: string;
+  platform: Platform;
+  connected: boolean;
+  expiresAt: Date | null;
+  extra: Record<string, unknown> | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export class PlatformService {
+  /**
+   * Get authorization URL for Twitter
+   */
+  getTwitterAuthUrl(userId: string): string {
+    return twitterAdapter.getAuthorizationUrl(userId);
+  }
+
+  /**
+   * Get authorization URL for YouTube
+   */
+  getYouTubeAuthUrl(userId: string, redirectUri: string): string {
+    return youtubeAdapter.getAuthorizationUrl(userId, redirectUri);
+  }
+
+  /**
+   * Connect Twitter account
+   */
+  async connectTwitter(request: ConnectTwitterRequest): Promise<void> {
+    try {
+      const { userId, code, state } = request;
+
+      // Verify state matches userId for security
+      if (state !== userId) {
+        throw new ValidationError('Invalid state parameter');
+      }
+
+      // Handle Twitter OAuth callback
+      const connectionData = await twitterAdapter.handleCallback(code, state);
+
+      // Save to database via userService
+      await userService.connectPlatform({
+        userId,
+        platform: Platform.TWITTER,
+        accessToken: connectionData.accessToken,
+        refreshToken: connectionData.refreshToken,
+        expiresAt: connectionData.expiresAt,
+        extra: {
+          username: connectionData.username,
+        },
+      });
+
+      logger.info('Twitter connected successfully', { userId, username: connectionData.username });
+    } catch (error) {
+      logger.error('Twitter connection failed', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Connect Telegram bot
+   */
+  async connectTelegram(request: ConnectTelegramRequest): Promise<void> {
+    try {
+      const { userId, botToken, channelId } = request;
+
+      // Validate and connect Telegram
+      const connectionData = await telegramAdapter.connect(botToken, channelId);
+
+      // Save to database via userService
+      // Store botToken as accessToken (encrypted), no refresh token for Telegram
+      await userService.connectPlatform({
+        userId,
+        platform: Platform.TELEGRAM,
+        accessToken: connectionData.botToken,
+        refreshToken: undefined,
+        expiresAt: undefined, // Telegram tokens don't expire
+        extra: {
+          botUsername: connectionData.botUsername,
+          botId: connectionData.botId,
+          channelId: connectionData.channelId,
+        },
+      });
+
+      logger.info('Telegram connected successfully', {
+        userId,
+        botUsername: connectionData.botUsername,
+        channelId,
+      });
+    } catch (error) {
+      logger.error('Telegram connection failed', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Connect YouTube account
+   */
+  async connectYouTube(request: ConnectYouTubeRequest): Promise<void> {
+    try {
+      const { userId, code, redirectUri } = request;
+
+      // Handle YouTube OAuth callback
+      const connectionData = await youtubeAdapter.handleCallback(code, redirectUri);
+
+      // Save to database via userService
+      await userService.connectPlatform({
+        userId,
+        platform: Platform.YOUTUBE,
+        accessToken: connectionData.accessToken,
+        refreshToken: connectionData.refreshToken,
+        expiresAt: connectionData.expiresAt,
+        extra: {
+          channelId: connectionData.channelId,
+          channelTitle: connectionData.channelTitle,
+        },
+      });
+
+      logger.info('YouTube connected successfully', {
+        userId,
+        channelId: connectionData.channelId,
+        channelTitle: connectionData.channelTitle,
+      });
+    } catch (error) {
+      logger.error('YouTube connection failed', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Disconnect a platform
+   */
+  async disconnectPlatform(userId: string, platform: Platform): Promise<void> {
+    try {
+      // Get tokens before deleting (for revocation)
+      const tokens = await userService.getPlatformTokens(userId, platform);
+
+      if (tokens) {
+        // Revoke tokens based on platform
+        switch (platform) {
+          case Platform.TWITTER:
+            await twitterAdapter.disconnect(tokens.accessToken);
+            break;
+          case Platform.YOUTUBE:
+            await youtubeAdapter.disconnect(tokens.accessToken);
+            break;
+          case Platform.TELEGRAM:
+            await telegramAdapter.disconnect();
+            break;
+          default:
+            logger.warn(`Disconnect not implemented for platform: ${platform}`);
+        }
+      }
+
+      // Delete from database
+      await userService.disconnectPlatform(userId, platform);
+
+      logger.info('Platform disconnected successfully', { userId, platform });
+    } catch (error) {
+      logger.error('Platform disconnect failed', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List all connected platforms for a user
+   */
+  async listPlatforms(userId: string): Promise<PlatformConnectionInfo[]> {
+    try {
+      const platforms = await userService.getConnectedPlatforms(userId);
+
+      return platforms.map((p) => ({
+        id: p.id,
+        platform: p.platform as Platform,
+        connected: true,
+        expiresAt: p.expiresAt,
+        extra: p.extra,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      }));
+    } catch (error) {
+      logger.error('Failed to list platforms', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a specific platform is connected
+   */
+  async isPlatformConnected(userId: string, platform: Platform): Promise<boolean> {
+    try {
+      const tokens = await userService.getPlatformTokens(userId, platform);
+      return tokens !== null;
+    } catch (error) {
+      logger.error('Failed to check platform connection', error);
+      return false;
+    }
+  }
+
+  /**
+   * Refresh tokens for a platform if needed
+   */
+  async refreshPlatformTokens(userId: string, platform: Platform): Promise<void> {
+    try {
+      const tokens = await userService.getPlatformTokens(userId, platform);
+
+      if (!tokens) {
+        throw new ValidationError(`Platform ${platform} is not connected`);
+      }
+
+      // Check if token is expired or about to expire (within 5 minutes)
+      const now = new Date();
+      const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+
+      if (!tokens.expiresAt || tokens.expiresAt > fiveMinutesFromNow) {
+        // Token is still valid
+        return;
+      }
+
+      if (!tokens.refreshToken) {
+        throw new PlatformError(platform, 'No refresh token available', 401);
+      }
+
+      // Refresh based on platform
+      switch (platform) {
+        case Platform.TWITTER: {
+          const newTokens = await twitterAdapter.refreshTokens(tokens.refreshToken);
+          await userService.connectPlatform({
+            userId,
+            platform: Platform.TWITTER,
+            accessToken: newTokens.accessToken,
+            refreshToken: newTokens.refreshToken,
+            expiresAt: newTokens.expiresAt,
+            extra: {
+              username: newTokens.username,
+            },
+          });
+          break;
+        }
+        case Platform.YOUTUBE: {
+          const newTokens = await youtubeAdapter.refreshTokens(tokens.refreshToken);
+          await userService.connectPlatform({
+            userId,
+            platform: Platform.YOUTUBE,
+            accessToken: newTokens.accessToken,
+            refreshToken: newTokens.refreshToken,
+            expiresAt: newTokens.expiresAt,
+            extra: {
+              channelId: newTokens.channelId,
+              channelTitle: newTokens.channelTitle,
+            },
+          });
+          break;
+        }
+        case Platform.TELEGRAM:
+          // Telegram tokens don't expire
+          break;
+        default:
+          throw new PlatformError(platform, 'Token refresh not supported', 400);
+      }
+
+      logger.info('Platform tokens refreshed successfully', { userId, platform });
+    } catch (error) {
+      logger.error('Failed to refresh platform tokens', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Validate platform connection
+   */
+  async validatePlatformConnection(userId: string, platform: Platform): Promise<boolean> {
+    try {
+      const tokens = await userService.getPlatformTokens(userId, platform);
+
+      if (!tokens) {
+        return false;
+      }
+
+      switch (platform) {
+        case Platform.TWITTER:
+          return await twitterAdapter.validateConnection(tokens.accessToken);
+        case Platform.YOUTUBE:
+          return await youtubeAdapter.validateConnection(tokens.accessToken);
+        case Platform.TELEGRAM:
+          return await telegramAdapter.validateConnection(tokens.accessToken);
+        default:
+          return false;
+      }
+    } catch (error) {
+      logger.error('Platform validation failed', error);
+      return false;
+    }
+  }
+}
+
+export const platformService = new PlatformService();

@@ -39,11 +39,14 @@ export class PrismaDatabase {
 
   // Community methods
   async createCommunity(name: string, userId?: string): Promise<Community> {
+    const data: any = { name };
+    // If the Prisma schema defines a relation field `user` (not a scalar `userId`), connect it here.
+    if (userId) {
+      data.user = { connect: { id: userId } };
+    }
+
     const community = await this.prisma.community.create({
-      data: {
-        name,
-        userId: userId || '00000000-0000-0000-0000-000000000000', // Default to system user
-      },
+      data,
     });
 
     return {

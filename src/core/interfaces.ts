@@ -10,6 +10,8 @@ export enum Platform {
   FACEBOOK = 'facebook',
   TIKTOK = 'tiktok',
   INSTAGRAM = 'instagram',
+  TWITTER = 'twitter',
+  TELEGRAM = 'telegram',
 }
 
 /**

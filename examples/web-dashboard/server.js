@@ -83,6 +83,131 @@ app.get('/api/community/:communityId', async (req, res) => {
   }
 });
 
+// User Platforms proxy endpoints (Twitter, Telegram, YouTube)
+
+// Get all connected user platforms
+app.get('/api/v1/platforms', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/platforms`, {
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch platforms', success: false });
+  }
+});
+
+// Connect Twitter
+app.post('/api/v1/platforms/twitter/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/twitter/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect Twitter', success: false });
+  }
+});
+
+// Connect Telegram
+app.post('/api/v1/platforms/telegram/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/telegram/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect Telegram', success: false });
+  }
+});
+
+// Connect YouTube
+app.post('/api/v1/platforms/youtube/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/youtube/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect YouTube', success: false });
+  }
+});
+
+// Disconnect platform
+app.delete('/api/v1/platforms/:platform', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.delete(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/${req.params.platform}`,
+      {
+        headers: {
+          Authorization: authHeader,
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to disconnect platform', success: false });
+  }
+});
+
+// Check platform status
+app.get('/api/v1/platforms/:platform/status', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/${req.params.platform}/status`,
+      {
+        headers: {
+          Authorization: authHeader,
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to check platform status', success: false });
+  }
+});
+
 // User authentication proxy endpoints
 
 // User registration

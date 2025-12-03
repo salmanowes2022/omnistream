@@ -22,12 +22,19 @@ class OmnistreamDashboard {
     // Check API connection
     await this.checkConnection();
 
-    // Check if user already has API key
-    const apiKey = this.api.getApiKey();
-    if (apiKey) {
+    // Check if user is logged in (NEW user auth system)
+    const authToken = localStorage.getItem('authToken');
+    if (authToken) {
+      console.log('User authenticated with token');
       await this.loadDashboard();
     } else {
-      this.showSetup();
+      // Fall back to old community system
+      const apiKey = this.api.getApiKey();
+      if (apiKey) {
+        await this.loadDashboard();
+      } else {
+        this.showSetup();
+      }
     }
 
     // Setup event listeners

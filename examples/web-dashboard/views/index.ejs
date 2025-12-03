@@ -87,6 +87,84 @@
             </div>
         </div>
 
+        <!-- User Platform Connections Section -->
+        <div id="user-platforms-section" class="section" style="display: none;">
+            <div class="card">
+                <h2>🔗 Connect Your Social Platforms</h2>
+                <p class="info-text">Connect Twitter, Telegram, and YouTube to manage your social accounts</p>
+
+                <!-- Success/Error Alerts -->
+                <div id="user-platform-success" class="alert alert-success" style="display: none;"></div>
+                <div id="user-platform-error" class="alert alert-error" style="display: none;"></div>
+                <div id="user-platform-loading" class="loading-message" style="display: none;">Loading...</div>
+
+                <div class="user-platforms-grid">
+                    <!-- YouTube Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #FF0000;">▶</div>
+                            <div class="platform-details">
+                                <h3>YouTube</h3>
+                                <p class="platform-description">Connect your YouTube channel</p>
+                                <div id="user-youtube-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-youtube-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-youtube" class="btn btn-primary" onclick="window.userPlatforms.connectUserYouTube()">
+                                    Connect YouTube
+                                </button>
+                                <button id="user-disconnect-youtube" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('youtube')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Twitter Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #1DA1F2;">𝕏</div>
+                            <div class="platform-details">
+                                <h3>Twitter / X</h3>
+                                <p class="platform-description">Connect your Twitter account</p>
+                                <div id="user-twitter-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-twitter-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-twitter" class="btn btn-primary" onclick="window.userPlatforms.connectUserTwitter()">
+                                    Connect Twitter
+                                </button>
+                                <button id="user-disconnect-twitter" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('twitter')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telegram Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #0088cc;">✈</div>
+                            <div class="platform-details">
+                                <h3>Telegram</h3>
+                                <p class="platform-description">Connect your Telegram bot</p>
+                                <div id="user-telegram-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-telegram-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-telegram" class="btn btn-primary" onclick="window.userPlatforms.connectUserTelegram()">
+                                    Connect Telegram
+                                </button>
+                                <button id="user-disconnect-telegram" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('telegram')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Platform OAuth Section -->
         <div id="platforms-section" class="section" style="display: none;">
             <div class="card">
@@ -164,6 +242,59 @@
         </div>
     </div>
 
+    <!-- Telegram Connection Modal -->
+    <div id="user-telegram-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Connect Telegram Bot</h3>
+                <button class="modal-close" onclick="window.userPlatforms.closeUserTelegramModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2">
+                    To connect Telegram, you need to create a bot and add it to your channel as an administrator.
+                </p>
+                <ol class="instruction-list">
+                    <li>Message <a href="https://t.me/BotFather" target="_blank">@BotFather</a> on Telegram</li>
+                    <li>Send <code>/newbot</code> and follow the instructions</li>
+                    <li>Copy your bot token</li>
+                    <li>Add your bot to your channel as an administrator</li>
+                    <li>Get your channel ID (starts with -100...)</li>
+                </ol>
+
+                <div class="form-group">
+                    <label class="form-label" for="user-telegram-bot-token">Bot Token</label>
+                    <input
+                        type="text"
+                        id="user-telegram-bot-token"
+                        placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="user-telegram-channel-id">Channel ID</label>
+                    <input
+                        type="text"
+                        id="user-telegram-channel-id"
+                        placeholder="-1001234567890"
+                        required
+                    >
+                    <small class="text-muted">Must start with a minus sign (e.g., -1001234567890)</small>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="window.userPlatforms.closeUserTelegramModal()">
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary" onclick="window.userPlatforms.submitUserTelegramConnection()">
+                        Connect
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/app.js"></script>
+    <script src="/js/user-platforms.js"></script>
 </body>
 </html>

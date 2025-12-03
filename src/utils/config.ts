@@ -30,6 +30,16 @@ export interface Config {
     redirectUri: string;
   };
 
+  twitter: {
+    clientId: string;
+    clientSecret: string;
+    redirectUri: string;
+  };
+
+  telegram: {
+    botToken: string;
+  };
+
   security: {
     jwtSecret: string;
   };
@@ -57,7 +67,7 @@ export const config: Config = {
     clientSecret: getEnvVarOptional('YOUTUBE_CLIENT_SECRET', ''),
     redirectUri: getEnvVarOptional(
       'YOUTUBE_REDIRECT_URI',
-      'http://localhost:3000/api/v1/auth/youtube/callback'
+      'http://localhost:3000/api/v1/platforms/youtube/callback'
     ),
   },
 
@@ -77,6 +87,19 @@ export const config: Config = {
       'TIKTOK_REDIRECT_URI',
       'http://localhost:3000/api/v1/auth/tiktok/callback'
     ),
+  },
+
+  twitter: {
+    clientId: getEnvVarOptional('TWITTER_CLIENT_ID', ''),
+    clientSecret: getEnvVarOptional('TWITTER_CLIENT_SECRET', ''),
+    redirectUri: getEnvVarOptional(
+      'TWITTER_REDIRECT_URI',
+      'http://localhost:3000/api/v1/platforms/twitter/callback'
+    ),
+  },
+
+  telegram: {
+    botToken: getEnvVarOptional('TELEGRAM_BOT_TOKEN', ''),
   },
 
   security: {
