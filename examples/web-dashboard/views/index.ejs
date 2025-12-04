@@ -87,6 +87,168 @@
             </div>
         </div>
 
+        <!-- Schedule Event Section -->
+        <div id="schedule-event-section" class="section" style="display: none;">
+            <div class="card">
+                <h2>📅 Schedule Event</h2>
+                <p class="info-text">Schedule streams and posts for future publishing</p>
+
+                <!-- Success/Error Alerts -->
+                <div id="schedule-success" class="alert alert-success" style="display: none;"></div>
+                <div id="schedule-error" class="alert alert-error" style="display: none;"></div>
+                <div id="schedule-loading" class="loading-message" style="display: none;">Scheduling...</div>
+
+                <div class="schedule-form">
+                    <div class="form-group">
+                        <label for="schedule-type" class="form-label">Event Type</label>
+                        <select
+                            id="schedule-type"
+                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                        >
+                            <option value="stream">Live Stream</option>
+                            <option value="post">Post</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="schedule-title" class="form-label">Title</label>
+                        <input
+                            type="text"
+                            id="schedule-title"
+                            placeholder="Event title"
+                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="schedule-description" class="form-label">Description (Optional)</label>
+                        <textarea
+                            id="schedule-description"
+                            placeholder="Event description"
+                            rows="4"
+                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; resize: vertical;"
+                        ></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="schedule-datetime" class="form-label">Scheduled Date & Time</label>
+                        <input
+                            type="datetime-local"
+                            id="schedule-datetime"
+                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                        />
+                        <small class="text-muted">Event will be scheduled at this time</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Select Platforms</label>
+                        <div class="platform-checkboxes" style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;">
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="schedule-platform-youtube" value="youtube" style="margin-right: 8px; width: 18px; height: 18px;">
+                                <span style="font-weight: 500;">YouTube</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="schedule-platform-twitter" value="twitter" style="margin-right: 8px; width: 18px; height: 18px;">
+                                <span style="font-weight: 500;">Twitter</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="schedule-platform-telegram" value="telegram" style="margin-right: 8px; width: 18px; height: 18px;">
+                                <span style="font-weight: 500;">Telegram</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="schedule-platform-facebook" value="facebook" style="margin-right: 8px; width: 18px; height: 18px;">
+                                <span style="font-weight: 500;">Facebook</span>
+                            </label>
+                        </div>
+                        <small class="text-muted">Select at least one platform</small>
+                    </div>
+
+                    <button onclick="scheduleEvent()" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 600;">
+                        📅 Schedule Event
+                    </button>
+                </div>
+
+                <!-- Upcoming Events -->
+                <div id="upcoming-events" style="margin-top: 30px;">
+                    <h3>Upcoming Events</h3>
+                    <div id="upcoming-events-list" style="display: flex; flex-direction: column; gap: 10px;">
+                        <p class="text-muted" id="no-events-message">No scheduled events</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Post Section -->
+        <div id="create-post-section" class="section" style="display: none;">
+            <div class="card">
+                <h2>✍️ Create Post</h2>
+                <p class="info-text">Write once, publish to multiple platforms</p>
+
+                <!-- Success/Error Alerts -->
+                <div id="post-success" class="alert alert-success" style="display: none;"></div>
+                <div id="post-error" class="alert alert-error" style="display: none;"></div>
+                <div id="post-loading" class="loading-message" style="display: none;">Publishing...</div>
+
+                <div class="post-form">
+                    <div class="form-group">
+                        <label for="post-content" class="form-label">Post Content</label>
+                        <textarea
+                            id="post-content"
+                            placeholder="What's on your mind?"
+                            rows="6"
+                            maxlength="280"
+                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; resize: vertical;"
+                        ></textarea>
+                        <small class="text-muted" id="char-counter" style="display: block; margin-top: 5px; text-align: right;">0 / 280 characters</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="post-media-url" class="form-label">Media URL (Optional)</label>
+                        <input
+                            type="url"
+                            id="post-media-url"
+                            placeholder="https://example.com/image.jpg"
+                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                        />
+                        <small class="text-muted">Direct URL to an image or video</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Select Platforms</label>
+                        <div id="post-platform-checkboxes" class="platform-checkboxes" style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;">
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="post-platform-twitter" value="twitter" style="margin-right: 8px; width: 18px; height: 18px;">
+                                <span style="font-weight: 500;">Twitter / X</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="post-platform-facebook" value="facebook" style="margin-right: 8px; width: 18px; height: 18px;">
+                                <span style="font-weight: 500;">Facebook</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="post-platform-telegram" value="telegram" style="margin-right: 8px; width: 18px; height: 18px;">
+                                <span style="font-weight: 500;">Telegram</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="post-platform-youtube" value="youtube" style="margin-right: 8px; width: 18px; height: 18px;">
+                                <span style="font-weight: 500;">YouTube</span>
+                            </label>
+                        </div>
+                        <small class="text-muted">Select at least one platform</small>
+                    </div>
+
+                    <button onclick="publishPost()" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 600;">
+                        📤 Publish Post
+                    </button>
+                </div>
+
+                <!-- Post Results -->
+                <div id="post-results" class="post-results" style="display: none; margin-top: 20px;">
+                    <h3>Publication Results</h3>
+                    <div id="post-results-list"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- User Platform Connections Section -->
         <div id="user-platforms-section" class="section" style="display: none;">
             <div class="card">
@@ -161,19 +323,49 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Platform OAuth Section -->
-        <div id="platforms-section" class="section" style="display: none;">
-            <div class="card">
-                <h2>🔗 Connect Streaming Platforms</h2>
-                <p class="info-text">Connect your accounts to stream to multiple platforms simultaneously</p>
-                <div id="platforms-grid" class="platforms-grid">
-                    <!-- Platforms will be loaded dynamically -->
+                    <!-- Facebook Platform -->
+                    <div class="platform-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #1877F2;">👥</div>
+                            <div class="platform-details">
+                                <h3>Facebook</h3>
+                                <p class="platform-description">Connect your Facebook account</p>
+                                <div id="user-facebook-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-facebook-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-facebook" class="btn btn-primary" onclick="window.userPlatforms.connectUserFacebook()">
+                                    Connect Facebook
+                                </button>
+                                <button id="user-disconnect-facebook" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('facebook')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instagram Platform -->
+                    <div class="platform-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: linear-gradient(135deg, #E1306C 0%, #C13584 100%);">📷</div>
+                            <div class="platform-details">
+                                <h3>Instagram</h3>
+                                <p class="platform-description">Connect your Instagram Business account</p>
+                                <div id="user-instagram-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-instagram-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-instagram" class="btn btn-primary" onclick="window.userPlatforms.connectUserInstagram()">
+                                    Connect Instagram
+                                </button>
+                                <button id="user-disconnect-instagram" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('instagram')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="platform-status" class="status-message"></div>
             </div>
         </div>
 

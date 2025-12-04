@@ -3,6 +3,7 @@
  * Handles Twitter/X platform connection and disconnection
  */
 
+import axios from 'axios';
 import {
   exchangeTwitterCode,
   getTwitterAuthUrl,
@@ -105,6 +106,65 @@ export class TwitterAdapter {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Post a tweet with optional media
+   */
+  async post(params: {
+    content: string;
+    mediaUrl?: string;
+    credentials: { accessToken: string; refreshToken?: string; extra?: unknown };
+  }): Promise<{ status: string; postUrl?: string; postId?: string; error?: string }> {
+    try {
+      const { content, mediaUrl, credentials } = params;
+
+      // Twitter API v2 endpoint for creating tweets
+      const TWITTER_POST_URL = 'https://api.twitter.com/2/tweets';
+
+      const tweetData: { text: string; media?: { media_ids: string[] } } = {
+        text: content,
+      };
+
+      // If media is provided, we'd need to upload it first to get media_id
+      // For now, we'll support text-only tweets
+      // TODO: Implement media upload in future enhancement
+      if (mediaUrl) {
+        logger.warn('Twitter media upload not yet implemented', { mediaUrl });
+      }
+
+      const response = await axios.post(TWITTER_POST_URL, tweetData, {
+        headers: {
+          Authorization: `Bearer ${credentials.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const tweetId = response.data.data.id;
+      const username = (credentials.extra as { username?: string })?.username || 'user';
+      const postUrl = `https://twitter.com/${username}/status/${tweetId}`;
+
+      logger.info('Tweet posted successfully', { tweetId, postUrl });
+
+      return {
+        status: 'posted',
+        postUrl,
+        postId: tweetId,
+      };
+    } catch (error) {
+      logger.error('Twitter post failed', error);
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.detail || error.message;
+        return {
+          status: 'failed',
+          error: `Failed to post tweet: ${message}`,
+        };
+      }
+      return {
+        status: 'failed',
+        error: 'Failed to post tweet',
+      };
     }
   }
 }

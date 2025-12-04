@@ -40,6 +40,12 @@ export interface Config {
     botToken: string;
   };
 
+  instagram: {
+    appId: string;
+    appSecret: string;
+    redirectUri: string;
+  };
+
   security: {
     jwtSecret: string;
   };
@@ -76,7 +82,7 @@ export const config: Config = {
     appSecret: getEnvVarOptional('FACEBOOK_APP_SECRET', ''),
     redirectUri: getEnvVarOptional(
       'FACEBOOK_REDIRECT_URI',
-      'http://localhost:3000/api/v1/auth/facebook/callback'
+      'http://localhost:3000/api/v1/platforms/facebook/callback'
     ),
   },
 
@@ -100,6 +106,15 @@ export const config: Config = {
 
   telegram: {
     botToken: getEnvVarOptional('TELEGRAM_BOT_TOKEN', ''),
+  },
+
+  instagram: {
+    appId: getEnvVarOptional('INSTAGRAM_APP_ID', ''),
+    appSecret: getEnvVarOptional('INSTAGRAM_APP_SECRET', ''),
+    redirectUri: getEnvVarOptional(
+      'INSTAGRAM_REDIRECT_URI',
+      'http://localhost:3000/api/v1/platforms/instagram/callback'
+    ),
   },
 
   security: {

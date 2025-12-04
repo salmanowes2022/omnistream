@@ -18,6 +18,8 @@ import communitiesRouter from './api/routes/communities.js';
 import streamsRouter from './api/routes/streams.js';
 import userAuthRouter from './api/routes/user-auth.js';
 import platformsRouter from './api/routes/platforms.js';
+import postsRouter from './api/routes/posts.js';
+import scheduleRouter from './api/routes/schedule.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -48,6 +50,8 @@ app.use('/api/v1/user-auth', userAuthRouter);
 app.use('/api/v1/communities', communitiesRouter);
 app.use('/api/v1/streams', streamsRouter);
 app.use('/api/v1/platforms', platformsRouter);
+app.use('/api/v1/posts', postsRouter);
+app.use('/api/v1/schedule', scheduleRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);
@@ -57,6 +61,10 @@ OAuthConfigValidator.validateAndLog();
 
 // Initialize WebSocket chat server
 const chatServer = new ChatServer(server);
+
+// Start background scheduler worker
+import { startScheduler } from './workers/scheduler.js';
+startScheduler();
 
 // Start server
 server.listen(config.port, () => {

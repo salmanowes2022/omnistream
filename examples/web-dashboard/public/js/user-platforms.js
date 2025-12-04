@@ -52,6 +52,8 @@ async function loadUserPlatforms() {
     updateUserPlatformStatus('youtube', platforms.find(p => p.platform === 'youtube'));
     updateUserPlatformStatus('twitter', platforms.find(p => p.platform === 'twitter'));
     updateUserPlatformStatus('telegram', platforms.find(p => p.platform === 'telegram'));
+    updateUserPlatformStatus('facebook', platforms.find(p => p.platform === 'facebook'));
+    updateUserPlatformStatus('instagram', platforms.find(p => p.platform === 'instagram'));
 
     return platforms;
   } catch (error) {
@@ -90,6 +92,10 @@ function updateUserPlatformStatus(platform, data) {
         infoText = `@${data.extra.username || 'Unknown'}`;
       } else if (platform === 'telegram') {
         infoText = `Bot: @${data.extra.botUsername || 'Unknown'}`;
+      } else if (platform === 'facebook') {
+        infoText = `${data.extra.name || 'Unknown'}`;
+      } else if (platform === 'instagram') {
+        infoText = `@${data.extra.username || 'Unknown'}`;
       }
 
       infoEl.textContent = infoText;
@@ -240,6 +246,82 @@ async function connectUserYouTube() {
 }
 
 /**
+ * Connect Facebook
+ */
+async function connectUserFacebook() {
+  try {
+    showUserPlatformLoading('Connecting to Facebook...');
+
+    const response = await userPlatformRequest('/api/v1/platforms/facebook/connect', {
+      method: 'POST',
+    });
+
+    const authUrl = response.data.authUrl;
+
+    // Open OAuth popup
+    const popup = window.open(
+      authUrl,
+      'Facebook OAuth',
+      'width=600,height=700,scrollbars=yes'
+    );
+
+    // Listen for OAuth success message
+    window.addEventListener('message', function handler(event) {
+      if (event.data.type === 'platform-connected' && event.data.platform === 'facebook') {
+        window.removeEventListener('message', handler);
+        hideUserPlatformLoading();
+        showUserPlatformSuccess('Facebook connected successfully!');
+        loadUserPlatforms();
+        if (popup && !popup.closed) {
+          popup.close();
+        }
+      }
+    });
+  } catch (error) {
+    hideUserPlatformLoading();
+    showUserPlatformError(`Failed to connect Facebook: ${error.message}`);
+  }
+}
+
+/**
+ * Connect Instagram
+ */
+async function connectUserInstagram() {
+  try {
+    showUserPlatformLoading('Connecting to Instagram...');
+
+    const response = await userPlatformRequest('/api/v1/platforms/instagram/connect', {
+      method: 'POST',
+    });
+
+    const authUrl = response.data.authUrl;
+
+    // Open OAuth popup
+    const popup = window.open(
+      authUrl,
+      'Instagram OAuth',
+      'width=600,height=700,scrollbars=yes'
+    );
+
+    // Listen for OAuth success message
+    window.addEventListener('message', function handler(event) {
+      if (event.data.type === 'platform-connected' && event.data.platform === 'instagram') {
+        window.removeEventListener('message', handler);
+        hideUserPlatformLoading();
+        showUserPlatformSuccess('Instagram connected successfully!');
+        loadUserPlatforms();
+        if (popup && !popup.closed) {
+          popup.close();
+        }
+      }
+    });
+  } catch (error) {
+    hideUserPlatformLoading();
+    showUserPlatformError(`Failed to connect Instagram: ${error.message}`);
+  }
+}
+
+/**
  * Disconnect a user platform
  */
 async function disconnectUserPlatform(platform) {
@@ -322,6 +404,8 @@ window.userPlatforms = {
   connectUserTwitter,
   connectUserTelegram,
   connectUserYouTube,
+  connectUserFacebook,
+  connectUserInstagram,
   disconnectUserPlatform,
   submitUserTelegramConnection,
   closeUserTelegramModal,

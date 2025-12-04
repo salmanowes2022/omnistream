@@ -16,14 +16,26 @@ document.addEventListener('DOMContentLoaded', () => {
         communityId = null;
 
         document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('schedule-event-section').style.display = 'block';
+        document.getElementById('create-post-section').style.display = 'block';
         document.getElementById('user-platforms-section').style.display = 'block';
+        document.getElementById('streams-section').style.display = 'block';
+
+        // Initialize character counter for post content
+        const postContentTextarea = document.getElementById('post-content');
+        if (postContentTextarea) {
+            postContentTextarea.addEventListener('input', updateCharCounter);
+        }
+
+        // Load scheduled events
+        loadScheduledEvents();
 
         // Load user platforms
         if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
             window.userPlatforms.loadUserPlatforms();
         }
 
-        // Load user's communities (this will fetch correct community for this user)
+        // Load user's communities
         loadUserCommunities();
     } else {
         // Legacy mode - try to load old community ID if exists
@@ -108,7 +120,12 @@ async function userLogin() {
         document.getElementById('login-password').value = '';
 
         // Show user platforms section
+        document.getElementById('schedule-event-section').style.display = 'block';
+        document.getElementById('create-post-section').style.display = 'block';
         document.getElementById('user-platforms-section').style.display = 'block';
+
+        // Load scheduled events
+        loadScheduledEvents();
 
         // Load user platforms
         if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
@@ -188,7 +205,12 @@ async function userRegister() {
         document.getElementById('register-password-confirm').value = '';
 
         // Show user platforms section
+        document.getElementById('schedule-event-section').style.display = 'block';
+        document.getElementById('create-post-section').style.display = 'block';
         document.getElementById('user-platforms-section').style.display = 'block';
+
+        // Load scheduled events
+        loadScheduledEvents();
 
         // Load user platforms
         if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
@@ -380,8 +402,9 @@ function logout() {
 
     document.getElementById('auth-section').style.display = 'block';
     document.getElementById('profile-section').style.display = 'none';
+    document.getElementById('schedule-event-section').style.display = 'none';
+    document.getElementById('create-post-section').style.display = 'none';
     document.getElementById('user-platforms-section').style.display = 'none';
-    document.getElementById('platforms-section').style.display = 'none';
     document.getElementById('streams-section').style.display = 'none';
 
     showStatus('auth-status', 'Logged out successfully', 'info');
@@ -399,10 +422,14 @@ async function loadCommunityProfile() {
             // Show UI for JWT authenticated users even without community
             if (token) {
                 document.getElementById('auth-section').style.display = 'none';
-                document.getElementById('profile-section').style.display = 'none'; // Hide profile section
+                document.getElementById('profile-section').style.display = 'none';
+                document.getElementById('schedule-event-section').style.display = 'block';
+                document.getElementById('create-post-section').style.display = 'block';
                 document.getElementById('user-platforms-section').style.display = 'block';
-                document.getElementById('platforms-section').style.display = 'none'; // Hide old platforms section
-                document.getElementById('streams-section').style.display = 'none'; // Hide streams section
+                document.getElementById('streams-section').style.display = 'block';
+
+                // Load scheduled events
+                loadScheduledEvents();
 
                 // Load user platforms if logged in with JWT
                 if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
@@ -437,9 +464,13 @@ async function loadCommunityProfile() {
                     // Show user platforms section even without community
                     document.getElementById('auth-section').style.display = 'none';
                     document.getElementById('profile-section').style.display = 'none';
+                    document.getElementById('schedule-event-section').style.display = 'block';
+                    document.getElementById('create-post-section').style.display = 'block';
                     document.getElementById('user-platforms-section').style.display = 'block';
-                    document.getElementById('platforms-section').style.display = 'none';
-                    document.getElementById('streams-section').style.display = 'none';
+                    document.getElementById('streams-section').style.display = 'block';
+
+                    // Load scheduled events
+                    loadScheduledEvents();
 
                     // Load user platforms
                     if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
@@ -462,23 +493,25 @@ async function loadCommunityProfile() {
 
         document.getElementById('auth-section').style.display = 'none';
         document.getElementById('profile-section').style.display = 'block';
+        document.getElementById('schedule-event-section').style.display = 'block';
+        document.getElementById('create-post-section').style.display = 'block';
         document.getElementById('user-platforms-section').style.display = 'block';
-        document.getElementById('platforms-section').style.display = 'block';
         document.getElementById('streams-section').style.display = 'block';
+
+        // Load scheduled events
+        loadScheduledEvents();
 
         // Load user platforms if logged in with JWT
         if (token && window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
             window.userPlatforms.loadUserPlatforms();
         }
 
-        loadPlatforms();
         loadStreams();
 
         // Auto-refresh streams every 10 seconds
         if (!streamRefreshInterval) {
             streamRefreshInterval = setInterval(() => {
                 loadStreams();
-                loadPlatforms();
             }, 10000);
         }
     } catch (error) {
@@ -496,37 +529,49 @@ async function loadCommunityProfile() {
     }
 }
 
+// Old loadPlatforms - now handled by user-platforms.js
 async function loadPlatforms() {
-    const platformsToCheck = ['youtube', 'facebook', 'tiktok'];
-    try {
-        const platformStatuses = await Promise.all(
-            platformsToCheck.map(async (platformName) => {
-                try {
-                    const statusResponse = await fetch(`/api/auth/${platformName}/status?communityId=${communityId}`);
-                    const statusData = await parseJsonResponse(statusResponse, `Status ${platformName}`);
-                    return {
-                        name: platformName,
-                        connected: statusData.success && statusData.data && statusData.data.connected
-                    };
-                } catch (error) {
-                    return {
-                        name: platformName,
-                        connected: false
-                    };
-                }
-            })
-        );
-
-        platforms = platformStatuses;
-        renderPlatforms();
-        renderPlatformCheckboxes();
-    } catch (error) {
-        showStatus('platform-status', error.message, 'error');
-    }
+    // No longer needed - using user-based platform connections
+    return;
 }
 
 function renderPlatforms() {
+    // No longer needed - using user-based platform connections
+    return;
+}
+
+function renderPlatformCheckboxes() {
+    // Load platform checkboxes from user's connected platforms
+    const container = document.getElementById('platform-checkboxes');
+    if (!container) return;
+
+    const token = localStorage.getItem('omnistream_jwt_token');
+    if (!token) return;
+
+    // Fetch user's connected platforms
+    fetch('/api/v1/platforms', {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.data.platforms) {
+            container.innerHTML = data.data.platforms.map(p => `
+                <label>
+                    <input type="checkbox" value="${p.platform}" checked> ${p.platform.charAt(0).toUpperCase() + p.platform.slice(1)}
+                </label>
+            `).join('');
+        }
+    })
+    .catch(err => console.error('Failed to load platforms:', err));
+}
+
+// OLD FUNCTION - KEPT FOR REFERENCE BUT NOT USED
+function renderPlatformsOLD() {
     const container = document.getElementById('platforms-grid');
+    if (!container) return;
 
     const platformIcons = {
         youtube: '📺',
@@ -1113,4 +1158,462 @@ function setButtonLoading(button, loading) {
         button.disabled = false;
         button.innerHTML = button.dataset.originalText || button.innerHTML;
     }
+}
+
+// ==================== UNIFIED POSTING SYSTEM ====================
+
+// Update character counter for post content
+function updateCharCounter() {
+    const textarea = document.getElementById('post-content');
+    const counter = document.getElementById('char-counter');
+    if (textarea && counter) {
+        const length = textarea.value.length;
+        const maxLength = textarea.maxLength;
+        counter.textContent = `${length} / ${maxLength} characters`;
+
+        // Change color if near limit
+        if (length > maxLength * 0.9) {
+            counter.style.color = '#ff4444';
+        } else if (length > maxLength * 0.8) {
+            counter.style.color = '#ff9800';
+        } else {
+            counter.style.color = '#666';
+        }
+    }
+}
+
+// Publish post to selected platforms
+async function publishPost() {
+    const jwtToken = localStorage.getItem('omnistream_jwt_token');
+    if (!jwtToken) {
+        showPostError('Please login to publish posts');
+        return;
+    }
+
+    // Get form values
+    const content = document.getElementById('post-content').value.trim();
+    const mediaUrl = document.getElementById('post-media-url').value.trim() || undefined;
+
+    // Get selected platforms
+    const selectedPlatforms = [];
+    const checkboxes = ['post-platform-twitter', 'post-platform-facebook', 'post-platform-telegram', 'post-platform-youtube'];
+    checkboxes.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox && checkbox.checked) {
+            selectedPlatforms.push(checkbox.value);
+        }
+    });
+
+    // Validate input
+    if (!content) {
+        showPostError('Please enter post content');
+        return;
+    }
+
+    if (selectedPlatforms.length === 0) {
+        showPostError('Please select at least one platform');
+        return;
+    }
+
+    // Show loading state
+    showPostLoading();
+    hidePostError();
+    hidePostSuccess();
+    document.getElementById('post-results').style.display = 'none';
+
+    try {
+        const response = await fetch('/api/v1/posts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwtToken}`
+            },
+            body: JSON.stringify({
+                content,
+                mediaUrl,
+                platforms: selectedPlatforms
+            })
+        });
+
+        const data = await parseJsonResponse(response, 'Post creation');
+
+        // Hide loading
+        hidePostLoading();
+
+        // Show results
+        displayPostResults(data.results);
+
+        // Determine if we should show success or partial success
+        const hasPosted = Object.values(data.results).some(r => r.status === 'posted');
+        const hasFailed = Object.values(data.results).some(r => r.status === 'failed');
+
+        if (hasPosted && !hasFailed) {
+            showPostSuccess('Post published successfully to all platforms!');
+            clearPostForm();
+        } else if (hasPosted && hasFailed) {
+            showPostSuccess('Post published with some errors. Check results below.');
+        } else {
+            showPostError('Failed to publish post to any platform. Check results below.');
+        }
+
+    } catch (error) {
+        hidePostLoading();
+        showPostError(`Error: ${error.message}`);
+        console.error('Post error:', error);
+    }
+}
+
+// Display post results for each platform
+function displayPostResults(results) {
+    const resultsContainer = document.getElementById('post-results-list');
+    const resultsSection = document.getElementById('post-results');
+
+    if (!resultsContainer || !resultsSection) return;
+
+    resultsContainer.innerHTML = '';
+    resultsSection.style.display = 'block';
+
+    const platformIcons = {
+        twitter: '𝕏',
+        telegram: '✈',
+        youtube: '▶'
+    };
+
+    const platformNames = {
+        twitter: 'Twitter / X',
+        telegram: 'Telegram',
+        youtube: 'YouTube'
+    };
+
+    for (const [platform, result] of Object.entries(results)) {
+        const resultCard = document.createElement('div');
+        resultCard.style.cssText = `
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        `;
+
+        let statusBadge = '';
+        let statusColor = '';
+        let resultMessage = '';
+
+        if (result.status === 'posted') {
+            statusColor = '#4CAF50';
+            statusBadge = '✅ Posted';
+            resultMessage = result.postUrl
+                ? `<a href="${result.postUrl}" target="_blank" style="color: #1976d2; text-decoration: none;">View Post →</a>`
+                : 'Successfully posted';
+        } else if (result.status === 'failed') {
+            statusColor = '#f44336';
+            statusBadge = '❌ Failed';
+            resultMessage = result.error || 'Unknown error';
+        } else if (result.status === 'unsupported') {
+            statusColor = '#ff9800';
+            statusBadge = '⚠️ Unsupported';
+            resultMessage = result.error || 'Platform does not support posting';
+        }
+
+        resultCard.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 24px;">${platformIcons[platform] || '•'}</span>
+                <div>
+                    <strong style="display: block; font-size: 16px;">${platformNames[platform] || platform}</strong>
+                    <span style="color: ${statusColor}; font-weight: 600; font-size: 14px;">${statusBadge}</span>
+                    <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">${resultMessage}</p>
+                </div>
+            </div>
+        `;
+
+        resultsContainer.appendChild(resultCard);
+    }
+}
+
+// Clear post form
+function clearPostForm() {
+    document.getElementById('post-content').value = '';
+    document.getElementById('post-media-url').value = '';
+    updateCharCounter();
+
+    // Uncheck all platform checkboxes
+    const checkboxes = ['post-platform-twitter', 'post-platform-telegram', 'post-platform-youtube'];
+    checkboxes.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) checkbox.checked = false;
+    });
+}
+
+// Post UI helper functions
+function showPostLoading() {
+    const el = document.getElementById('post-loading');
+    if (el) el.style.display = 'block';
+}
+
+function hidePostLoading() {
+    const el = document.getElementById('post-loading');
+    if (el) el.style.display = 'none';
+}
+
+function showPostSuccess(message) {
+    const el = document.getElementById('post-success');
+    if (el) {
+        el.textContent = message;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
+}
+
+function hidePostSuccess() {
+    const el = document.getElementById('post-success');
+    if (el) el.style.display = 'none';
+}
+
+function showPostError(message) {
+    const el = document.getElementById('post-error');
+    if (el) {
+        el.textContent = message;
+        el.style.display = 'block';
+    }
+}
+
+function hidePostError() {
+    const el = document.getElementById('post-error');
+    if (el) el.style.display = 'none';
+}
+
+// ==================== UNIFIED SCHEDULING SYSTEM ====================
+
+// Schedule an event
+async function scheduleEvent() {
+    const jwtToken = localStorage.getItem('omnistream_jwt_token');
+    if (!jwtToken) {
+        showScheduleError('Please login to schedule events');
+        return;
+    }
+
+    // Get form values
+    const type = document.getElementById('schedule-type').value;
+    const title = document.getElementById('schedule-title').value.trim();
+    const description = document.getElementById('schedule-description').value.trim() || undefined;
+    const datetime = document.getElementById('schedule-datetime').value;
+
+    // Get selected platforms
+    const selectedPlatforms = [];
+    const checkboxes = ['schedule-platform-youtube', 'schedule-platform-twitter', 'schedule-platform-facebook', 'schedule-platform-telegram'];
+    checkboxes.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox && checkbox.checked) {
+            selectedPlatforms.push(checkbox.value);
+        }
+    });
+
+    // Validate input
+    if (!title) {
+        showScheduleError('Please enter an event title');
+        return;
+    }
+
+    if (!datetime) {
+        showScheduleError('Please select a date and time');
+        return;
+    }
+
+    if (selectedPlatforms.length === 0) {
+        showScheduleError('Please select at least one platform');
+        return;
+    }
+
+    // Convert datetime to ISO string
+    const scheduledAt = new Date(datetime).toISOString();
+
+    // Show loading
+    showScheduleLoading();
+    hideScheduleError();
+    hideScheduleSuccess();
+
+    try {
+        const response = await fetch('/api/v1/schedule', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwtToken}`
+            },
+            body: JSON.stringify({
+                platforms: selectedPlatforms,
+                type,
+                title,
+                description,
+                scheduledAt
+            })
+        });
+
+        const data = await parseJsonResponse(response, 'Event scheduling');
+
+        hideScheduleLoading();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error?.message || 'Failed to schedule event');
+        }
+
+        showScheduleSuccess(`Event scheduled successfully! Job ID: ${data.jobId}`);
+        clearScheduleForm();
+
+        // Reload events list
+        await loadScheduledEvents();
+    } catch (error) {
+        hideScheduleLoading();
+        showScheduleError(`Error: ${error.message}`);
+        console.error('Schedule error:', error);
+    }
+}
+
+// Load scheduled events
+async function loadScheduledEvents() {
+    const jwtToken = localStorage.getItem('omnistream_jwt_token');
+    if (!jwtToken) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/schedule', {
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`
+            }
+        });
+
+        const data = await parseJsonResponse(response, 'Load scheduled events');
+
+        if (!response.ok || !data.success) {
+            console.error('Failed to load scheduled events:', data.error);
+            return;
+        }
+
+        displayScheduledEvents(data.jobs || []);
+    } catch (error) {
+        console.error('Error loading scheduled events:', error);
+    }
+}
+
+// Display scheduled events
+function displayScheduledEvents(jobs) {
+    const listContainer = document.getElementById('upcoming-events-list');
+    const noEventsMessage = document.getElementById('no-events-message');
+
+    if (!listContainer) return;
+
+    if (jobs.length === 0) {
+        listContainer.innerHTML = '<p class="text-muted" id="no-events-message">No scheduled events</p>';
+        return;
+    }
+
+    if (noEventsMessage) noEventsMessage.style.display = 'none';
+
+    const platformIcons = {
+        twitter: '𝕏',
+        telegram: '✈',
+        youtube: '▶'
+    };
+
+    const statusColors = {
+        pending: '#ff9800',
+        running: '#2196F3',
+        done: '#4CAF50',
+        failed: '#f44336'
+    };
+
+    listContainer.innerHTML = jobs.map(job => {
+        const scheduledDate = new Date(job.scheduledAt);
+        const isPast = scheduledDate < new Date();
+        const statusColor = statusColors[job.status] || '#666';
+
+        const platformsStr = job.platforms.map(p => platformIcons[p] || p).join(' ');
+
+        return `
+            <div style="
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                background: ${isPast ? '#f9f9f9' : 'white'};
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 5px 0; font-size: 16px;">${job.title || 'Untitled Event'}</h4>
+                        <p style="margin: 0 0 8px 0; color: #666; font-size: 14px;">${job.description || ''}</p>
+                        <div style="display: flex; gap: 15px; font-size: 14px; color: #666;">
+                            <span>📅 ${scheduledDate.toLocaleString()}</span>
+                            <span>${platformsStr}</span>
+                            <span style="text-transform: capitalize;">Type: ${job.type}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+                        <span style="
+                            background: ${statusColor};
+                            color: white;
+                            padding: 4px 12px;
+                            border-radius: 12px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            text-transform: uppercase;
+                        ">${job.status}</span>
+                        ${isPast ? '<small style="color: #999;">Past</small>' : '<small style="color: #4CAF50;">Upcoming</small>'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Clear schedule form
+function clearScheduleForm() {
+    document.getElementById('schedule-title').value = '';
+    document.getElementById('schedule-description').value = '';
+    document.getElementById('schedule-datetime').value = '';
+
+    // Uncheck all platform checkboxes
+    const checkboxes = ['schedule-platform-youtube', 'schedule-platform-twitter', 'schedule-platform-telegram'];
+    checkboxes.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) checkbox.checked = false;
+    });
+}
+
+// Schedule UI helper functions
+function showScheduleLoading() {
+    const el = document.getElementById('schedule-loading');
+    if (el) el.style.display = 'block';
+}
+
+function hideScheduleLoading() {
+    const el = document.getElementById('schedule-loading');
+    if (el) el.style.display = 'none';
+}
+
+function showScheduleSuccess(message) {
+    const el = document.getElementById('schedule-success');
+    if (el) {
+        el.textContent = message;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
+}
+
+function hideScheduleSuccess() {
+    const el = document.getElementById('schedule-success');
+    if (el) el.style.display = 'none';
+}
+
+function showScheduleError(message) {
+    const el = document.getElementById('schedule-error');
+    if (el) {
+        el.textContent = message;
+        el.style.display = 'block';
+    }
+}
+
+function hideScheduleError() {
+    const el = document.getElementById('schedule-error');
+    if (el) el.style.display = 'none';
 }

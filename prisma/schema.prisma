@@ -129,3 +129,21 @@ model ChatMessage {
   @@index([streamId, timestamp])
   @@map("chat_messages")
 }
+
+model ScheduledJob {
+  id          String   @id @default(cuid())
+  userId      String
+  platforms   String   // JSON-encoded array for SQLite
+  type        String   // "stream" | "post"
+  title       String?
+  description String?
+  scheduledAt DateTime
+  payload     String   // JSON-encoded data
+  status      String   // "pending" | "running" | "done" | "failed"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status, scheduledAt])
+  @@map("scheduled_jobs")
+}

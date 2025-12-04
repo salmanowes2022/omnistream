@@ -168,6 +168,28 @@ app.post('/api/v1/platforms/youtube/connect', async (req, res) => {
   }
 });
 
+// Connect Instagram
+app.post('/api/v1/platforms/instagram/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/instagram/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect Instagram', success: false });
+  }
+});
+
 // Disconnect platform
 app.delete('/api/v1/platforms/:platform', async (req, res) => {
   try {
@@ -528,6 +550,76 @@ app.delete('/api/streams/:streamId', async (req, res) => {
     res
       .status(error.response?.status || 500)
       .json(error.response?.data || { error: 'Failed to delete stream' });
+  }
+});
+
+// Facebook platform proxy
+app.post('/api/v1/platforms/facebook/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/platforms/facebook/connect`, req.body, {
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect Facebook', success: false });
+  }
+});
+
+// Posts proxy endpoints
+app.post('/api/v1/posts', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/posts`, req.body, {
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to create post', success: false });
+  }
+});
+
+// Schedule proxy endpoints
+app.post('/api/v1/schedule', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/schedule`, req.body, {
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to schedule event', success: false });
+  }
+});
+
+app.get('/api/v1/schedule', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/schedule`, {
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch scheduled events', success: false });
   }
 });
 

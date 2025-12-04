@@ -4,11 +4,12 @@ TypeScript/Node.js middleware that provides RESTful APIs to stream RTMP to YouTu
 
 ## 🚀 Features
 
+- **Multi-User System**: Complete authentication with JWT tokens and secure user management
 - **Multi-Platform Streaming**: Stream to YouTube, Facebook, TikTok, and Instagram from a single RTMP source
-- **OAuth Management**: Per-community OAuth token storage and refresh for each platform
+- **OAuth Management**: Per-user encrypted token storage for each platform
 - **Stream Control**: Create, start, stop, and monitor streams across all platforms
 - **Real-Time Chat**: WebSocket server aggregates chat messages from all platforms
-- **Graceful Degradation**: Continues working even if individual platforms fail
+- **Secure by Design**: Bcrypt password hashing, AES-256-GCM token encryption, JWT sessions
 - **Type-Safe**: Full TypeScript implementation with strict mode
 
 ## 📋 Platform Support
@@ -126,6 +127,49 @@ npm run test:all                # Run all tests (unit + dashboard + integration)
 
 For detailed setup instructions including OAuth provider configuration, see **[docs/guides/getting-started.md](./docs/guides/getting-started.md)**
 
+## 🔐 Authentication & User Management
+
+Omnistream now includes a complete multi-user authentication system:
+
+### Quick Start
+
+1. **Register a new account:**
+   - Visit `http://localhost:8080/register.html`
+   - Create your account with email and password
+
+2. **Login:**
+   - Visit `http://localhost:8080/login.html`
+   - Access your personal dashboard
+
+3. **Manage Platforms:**
+   - Connect YouTube, Facebook, TikTok, X, and Telegram
+   - Each user has isolated platform connections
+   - Tokens are encrypted in the database
+
+### Security Features
+
+- **Password Security**: Bcrypt hashing with 10 salt rounds
+- **Session Management**: JWT tokens with 7-day expiration
+- **Token Encryption**: AES-256-GCM encryption for OAuth tokens
+- **User Isolation**: Each user has separate communities and platform connections
+
+### API Authentication
+
+Protected endpoints require JWT authentication:
+
+```bash
+curl -X GET http://localhost:3000/api/v1/user-auth/me \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Documentation
+
+- [Authentication Guide](docs/guides/AUTHENTICATION_GUIDE.md) - Complete user guide
+- [Authentication Architecture](docs/architecture/authentication.md) - Technical details
+- [API Reference](docs/API_REFERENCE.md) - Complete API documentation
+
+---
+
 ## 📡 API Documentation
 
 ### Base URL
@@ -136,14 +180,9 @@ http://localhost:3000/api/v1
 
 ### Authentication
 
-Omnistream is designed to be run as a **private instance**. The administrator should guard access at the network level using:
+**New**: User authentication is now available via JWT tokens. See the [Authentication Guide](docs/guides/AUTHENTICATION_GUIDE.md) for details.
 
-- Firewall rules
-- Reverse proxy with authentication (nginx, Caddy, etc.)
-- VPN
-- Network isolation
-
-Most endpoints require a `communityId` parameter to identify which community the request belongs to.
+**Legacy**: The community-based access pattern is still supported for backward compatibility. Most stream and OAuth endpoints accept a `communityId` parameter.
 
 ### Endpoints
 
