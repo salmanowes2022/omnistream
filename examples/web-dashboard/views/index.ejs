@@ -371,28 +371,73 @@
 
         <!-- Stream Management Section -->
         <div id="streams-section" class="section" style="display: none;">
+            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 48px;">📡</div>
+                    <div>
+                        <h2 style="margin: 0; color: white;">Stream Management</h2>
+                        <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 14px;">Create and manage your multi-platform live streams</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
-                <h2>📡 Stream Management</h2>
-
-                <div class="stream-create">
-                    <h3>Create New Stream</h3>
-                    <input type="text" id="stream-title" placeholder="Stream Title" />
-                    <textarea id="stream-description" placeholder="Stream Description"></textarea>
-
-                    <div class="platform-selection">
-                        <h4>Select Platforms:</h4>
-                        <div id="platform-checkboxes"></div>
+                <div class="stream-create" style="background: #f8f9ff; padding: 25px; border-radius: 12px; margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                        <span style="font-size: 24px;">✨</span>
+                        <h3 style="margin: 0; color: #333;">Create New Stream</h3>
                     </div>
 
-                    <button onclick="createStream()" class="btn btn-success">Create Stream</button>
-                </div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555;">Stream Title</label>
+                        <input type="text" id="stream-title" placeholder="e.g., Live Gaming Session, Product Launch, Q&A Session"
+                               style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; transition: border-color 0.2s;"
+                               onfocus="this.style.borderColor='var(--primary-color)'"
+                               onblur="this.style.borderColor='#e0e0e0'" />
+                    </div>
 
-                <div class="streams-list">
-                    <h3>Your Streams</h3>
-                    <div id="streams-container"></div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555;">Stream Description (Optional)</label>
+                        <textarea id="stream-description" placeholder="Describe what your stream is about..."
+                                  style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; min-height: 80px; resize: vertical; transition: border-color 0.2s;"
+                                  onfocus="this.style.borderColor='var(--primary-color)'"
+                                  onblur="this.style.borderColor='#e0e0e0'"></textarea>
+                    </div>
+
+                    <div class="platform-selection" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 12px; font-weight: 500; color: #555;">
+                            <span style="font-size: 18px; margin-right: 5px;">🎯</span>
+                            Select Platforms to Stream:
+                        </label>
+                        <div id="platform-checkboxes" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    </div>
+
+                    <button onclick="createStream()" class="btn btn-success"
+                            style="width: 100%; padding: 14px; font-size: 16px; font-weight: 600; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border: none; border-radius: 8px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.3)'"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                        <span style="font-size: 18px; margin-right: 8px;">🚀</span>
+                        Create Stream
+                    </button>
                 </div>
 
                 <div id="stream-status" class="status-message"></div>
+
+                <div class="streams-list">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e0e0e0;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 24px;">🎬</span>
+                            <h3 style="margin: 0; color: #333;">Your Streams</h3>
+                        </div>
+                        <button onclick="loadStreams()" class="btn btn-secondary"
+                                style="padding: 8px 16px; font-size: 14px; border-radius: 6px;"
+                                title="Refresh stream list">
+                            <span style="margin-right: 5px;">🔄</span>
+                            Refresh
+                        </button>
+                    </div>
+                    <div id="streams-container"></div>
+                </div>
             </div>
         </div>
 

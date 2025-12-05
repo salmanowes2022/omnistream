@@ -14,6 +14,7 @@ import {
   StreamStatus,
 } from '../core/interfaces.js';
 import { NotFoundError } from '../core/errors.js';
+import { decryptToken } from '../core/auth/encryption.js';
 
 const parseJsonField = <T>(value: unknown): T | undefined => {
   if (value === null || value === undefined) return undefined;
@@ -138,6 +139,7 @@ export class PrismaDatabase {
   }
 
   async getOAuthTokens(communityId: string, platform: Platform): Promise<CommunityOAuthTokens> {
+    // Try to get community OAuth tokens first (old system)
     const tokenRecord = await this.prisma.oAuthToken.findUnique({
       where: {
         communityId_platform: {
@@ -147,32 +149,82 @@ export class PrismaDatabase {
       },
     });
 
-    if (!tokenRecord) {
+    if (tokenRecord) {
+      const tokens = parseJsonField<{
+        accessToken: string;
+        refreshToken: string;
+        expiresAt: string;
+        scope: string[];
+      }>(tokenRecord.tokens);
+
+      if (!tokens) {
+        throw new NotFoundError(`Invalid token data for community ${communityId} on ${platform}`);
+      }
+
+      return {
+        communityId: tokenRecord.communityId,
+        platform,
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: new Date(tokens.expiresAt),
+          scope: Array.isArray(tokens.scope) ? tokens.scope : [],
+        },
+        updatedAt: tokenRecord.updatedAt,
+      };
+    }
+
+    // Fallback: Get user's social account (new system)
+    // First, get the community to find the user
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+      select: { userId: true },
+    });
+
+    if (!community) {
+      throw new NotFoundError(`Community ${communityId} not found`);
+    }
+
+    // Get the user's social account for this platform
+    const socialAccount = await this.prisma.socialAccount.findUnique({
+      where: {
+        userId_platform: {
+          userId: community.userId,
+          platform,
+        },
+      },
+    });
+
+    if (!socialAccount) {
       throw new NotFoundError(`No OAuth tokens found for community ${communityId} on ${platform}`);
     }
 
-    const tokens = parseJsonField<{
-      accessToken: string;
-      refreshToken: string;
-      expiresAt: string;
-      scope: string[];
-    }>(tokenRecord.tokens);
-
-    if (!tokens) {
-      throw new NotFoundError(`Invalid token data for community ${communityId} on ${platform}`);
+    if (!socialAccount.accessToken) {
+      throw new NotFoundError(`Access token not found for community ${communityId} on ${platform}`);
     }
 
-    return {
-      communityId: tokenRecord.communityId,
-      platform,
-      tokens: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        expiresAt: new Date(tokens.expiresAt),
-        scope: Array.isArray(tokens.scope) ? tokens.scope : [],
-      },
-      updatedAt: tokenRecord.updatedAt,
-    };
+    // Convert SocialAccount to CommunityOAuthTokens format
+    // IMPORTANT: Decrypt the tokens before returning them
+    try {
+      const decryptedAccessToken = decryptToken(socialAccount.accessToken);
+      const decryptedRefreshToken = socialAccount.refreshToken ? decryptToken(socialAccount.refreshToken) : '';
+
+      return {
+        communityId,
+        platform,
+        tokens: {
+          accessToken: decryptedAccessToken,
+          refreshToken: decryptedRefreshToken,
+          expiresAt: socialAccount.expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year if not set
+          scope: [], // Social accounts don't store scope
+        },
+        updatedAt: socialAccount.updatedAt,
+      };
+    } catch (error) {
+      throw new NotFoundError(
+        `Failed to decrypt tokens for community ${communityId} on ${platform}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   async getOAuthToken(communityId: string, platform: Platform): Promise<OAuthToken | null> {

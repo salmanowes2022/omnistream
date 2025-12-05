@@ -20,6 +20,7 @@ const router = express.Router();
 router.post(
   '/twitter/connect',
   requireAuth,
+  // eslint-disable-next-line @typescript-eslint/require-await
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authReq = req as AuthRequest;
@@ -181,6 +182,7 @@ router.post(
 router.post(
   '/youtube/connect',
   requireAuth,
+  // eslint-disable-next-line @typescript-eslint/require-await
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authReq = req as AuthRequest;
@@ -246,6 +248,7 @@ router.post(
 router.post(
   '/instagram/connect',
   requireAuth,
+  // eslint-disable-next-line @typescript-eslint/require-await
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authReq = req as AuthRequest;

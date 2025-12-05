@@ -35,6 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
             window.userPlatforms.loadUserPlatforms();
         }
 
+        // Load platform checkboxes for stream creation
+        setTimeout(() => {
+            renderPlatformCheckboxes();
+        }, 1000);
+
         // Load user's communities
         loadUserCommunities();
     } else {
@@ -134,6 +139,11 @@ async function userLogin() {
             }, 500);
         }
 
+        // Load platform checkboxes for stream creation
+        setTimeout(() => {
+            renderPlatformCheckboxes();
+        }, 1000);
+
         // Load user's first community or create one
         setTimeout(async () => {
             await loadUserCommunities();
@@ -218,6 +228,11 @@ async function userRegister() {
                 window.userPlatforms.loadUserPlatforms();
             }, 500);
         }
+
+        // Load platform checkboxes for stream creation
+        setTimeout(() => {
+            renderPlatformCheckboxes();
+        }, 1000);
 
         // Create a default community for the user
         setTimeout(async () => {
@@ -506,6 +521,11 @@ async function loadCommunityProfile() {
             window.userPlatforms.loadUserPlatforms();
         }
 
+        // Load platform checkboxes for stream creation
+        if (token) {
+            renderPlatformCheckboxes();
+        }
+
         loadStreams();
 
         // Auto-refresh streams every 10 seconds
@@ -546,7 +566,22 @@ function renderPlatformCheckboxes() {
     if (!container) return;
 
     const token = localStorage.getItem('omnistream_jwt_token');
-    if (!token) return;
+    if (!token) {
+        container.innerHTML = '<p class="info-text" style="color: #666; text-align: center; padding: 20px;">Please login to connect platforms and create streams.</p>';
+        return;
+    }
+
+    // Show loading state
+    container.innerHTML = '<p class="info-text" style="color: #666; text-align: center; padding: 20px;">Loading your connected platforms...</p>';
+
+    // Platform icons for better UI
+    const platformIcons = {
+        twitter: '𝕏',
+        telegram: '✈',
+        youtube: '▶',
+        facebook: '👥',
+        instagram: '📷'
+    };
 
     // Fetch user's connected platforms
     fetch('/api/v1/platforms', {
@@ -557,69 +592,50 @@ function renderPlatformCheckboxes() {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.success && data.data.platforms) {
-            container.innerHTML = data.data.platforms.map(p => `
-                <label>
-                    <input type="checkbox" value="${p.platform}" checked> ${p.platform.charAt(0).toUpperCase() + p.platform.slice(1)}
-                </label>
-            `).join('');
+        if (data.success && data.data.platforms && data.data.platforms.length > 0) {
+            container.innerHTML = data.data.platforms.map(p => {
+                const platformName = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
+                const icon = platformIcons[p.platform.toLowerCase()] || '📡';
+
+                return `
+                    <label class="platform-checkbox-label" style="
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        padding: 12px 16px;
+                        margin-bottom: 8px;
+                        border: 2px solid #e0e0e0;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        background: white;
+                    " onmouseover="this.style.borderColor='var(--primary-color)'; this.style.background='#f8f9ff';"
+                       onmouseout="this.style.borderColor='#e0e0e0'; this.style.background='white';">
+                        <input type="checkbox" class="platform-checkbox" name="platforms" value="${p.platform}" checked
+                               style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 20px;">${icon}</span>
+                        <span style="font-weight: 500; color: #333;">${platformName}</span>
+                        <small style="margin-left: auto; color: #4CAF50; font-size: 12px;">✓ Connected</small>
+                    </label>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = `
+                <p class="info-text" style="color: #666; text-align: center; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                    📱 No platforms connected yet.<br><br>
+                    <span style="font-size: 14px;">Please connect at least one platform in the <strong>"Connect Social Platforms"</strong> section above to create streams.</span>
+                </p>
+            `;
         }
     })
-    .catch(err => console.error('Failed to load platforms:', err));
-}
-
-// OLD FUNCTION - KEPT FOR REFERENCE BUT NOT USED
-function renderPlatformsOLD() {
-    const container = document.getElementById('platforms-grid');
-    if (!container) return;
-
-    const platformIcons = {
-        youtube: '📺',
-        facebook: '👥',
-        tiktok: '🎵',
-        twitch: '🎮'
-    };
-
-    container.innerHTML = platforms.map(platform => {
-        const isConnected = platform.connected;
-        const icon = platformIcons[platform.name.toLowerCase()] || '📡';
-
-        return `
-            <div class="platform-card ${isConnected ? 'connected' : ''}">
-                <div class="platform-icon">${icon}</div>
-                <div class="platform-name">${platform.name}</div>
-                <div class="platform-status ${isConnected ? 'connected' : ''}">
-                    ${isConnected ? '✓ Connected' : 'Not Connected'}
-                </div>
-                ${!isConnected ? `
-                    <button onclick="connectPlatform('${platform.name}')" class="btn btn-primary">
-                        Connect ${platform.name}
-                    </button>
-                ` : `
-                    <button onclick="disconnectPlatform('${platform.name}')" class="btn btn-secondary">
-                        Disconnect
-                    </button>
-                `}
-            </div>
+    .catch(err => {
+        console.error('Failed to load platforms:', err);
+        container.innerHTML = `
+            <p class="info-text" style="color: #f44336; text-align: center; padding: 20px;">
+                ⚠️ Failed to load platforms. Please refresh the page.
+            </p>
         `;
-    }).join('');
-}
-
-function renderPlatformCheckboxes() {
-    const container = document.getElementById('platform-checkboxes');
-    const connectedPlatforms = platforms.filter(p => p.connected);
-
-    if (connectedPlatforms.length === 0) {
-        container.innerHTML = '<p class="info-text">Please connect at least one platform above to create streams.</p>';
-        return;
-    }
-
-    container.innerHTML = connectedPlatforms.map(platform => `
-        <label class="platform-checkbox">
-            <input type="checkbox" class="platform-checkbox" name="platforms" value="${platform.name}" />
-            <span>${platform.name}</span>
-        </label>
-    `).join('');
+    });
 }
 
 async function connectPlatform(platformName) {
