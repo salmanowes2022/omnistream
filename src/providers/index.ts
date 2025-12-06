@@ -8,6 +8,8 @@ import { youtubeProvider } from './youtube/index.js';
 import { facebookProvider } from './facebook/index.js';
 import { tiktokProvider } from './tiktok/index.js';
 import { instagramProvider } from './instagram/index.js';
+import { twitterProvider } from './twitter/index.js';
+import { telegramProvider } from './telegram/index.js';
 import { NotFoundError } from '../core/errors.js';
 
 class ProviderRegistry {
@@ -18,6 +20,8 @@ class ProviderRegistry {
     this.registerProvider(facebookProvider);
     this.registerProvider(tiktokProvider);
     this.registerProvider(instagramProvider);
+    this.registerProvider(twitterProvider);
+    this.registerProvider(telegramProvider);
   }
 
   private registerProvider(provider: StreamProvider): void {

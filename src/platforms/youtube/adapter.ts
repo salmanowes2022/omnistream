@@ -237,6 +237,69 @@ export class YouTubeAdapter {
       };
     }
   }
+
+  /**
+   * Fetch chat messages from YouTube live chat (read-only)
+   */
+  async fetchChatMessages(
+    liveChatId: string,
+    accessToken: string,
+    lastMessageTime?: Date
+  ): Promise<Array<{
+    id: string;
+    streamId: string;
+    platform: string;
+    authorId: string;
+    authorName: string;
+    authorImageUrl?: string;
+    message: string;
+    timestamp: Date;
+  }>> {
+    try {
+      const response = await axios.get('https://www.googleapis.com/youtube/v3/liveChat/messages', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        params: {
+          liveChatId,
+          part: 'snippet,authorDetails',
+          maxResults: 200,
+        },
+      });
+
+      const messages = [];
+      for (const item of response.data.items || []) {
+        const publishedAt = new Date(item.snippet.publishedAt);
+
+        if (lastMessageTime && publishedAt <= lastMessageTime) {
+          continue;
+        }
+
+        messages.push({
+          id: item.id,
+          streamId: liveChatId,
+          platform: 'youtube',
+          authorId: item.authorDetails.channelId,
+          authorName: item.authorDetails.displayName,
+          authorImageUrl: item.authorDetails.profileImageUrl,
+          message: item.snippet.displayMessage,
+          timestamp: publishedAt,
+        });
+      }
+
+      return messages;
+    } catch (error) {
+      logger.error('YouTube fetchChatMessages failed', error);
+      return [];
+    }
+  }
+
+  /**
+   * Send chat message (not supported for YouTube)
+   */
+  async sendChatMessage(): Promise<{ status: 'unsupported' }> {
+    return { status: 'unsupported' };
+  }
 }
 
 export const youtubeAdapter = new YouTubeAdapter();

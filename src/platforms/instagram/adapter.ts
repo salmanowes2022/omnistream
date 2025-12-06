@@ -178,6 +178,29 @@ export class InstagramAdapter {
       };
     }
   }
+
+  /**
+   * Fetch chat messages (not supported for Instagram)
+   */
+  async fetchChatMessages(): Promise<Array<{
+    id: string;
+    streamId: string;
+    platform: string;
+    authorId: string;
+    authorName: string;
+    authorImageUrl?: string;
+    message: string;
+    timestamp: Date;
+  }>> {
+    return [];
+  }
+
+  /**
+   * Send chat message (not supported for Instagram)
+   */
+  async sendChatMessage(): Promise<{ status: 'unsupported' }> {
+    return { status: 'unsupported' };
+  }
 }
 
 export const instagramAdapter = new InstagramAdapter();

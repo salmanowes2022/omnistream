@@ -291,6 +291,117 @@ export class TelegramAdapter {
       };
     }
   }
+
+  /**
+   * Fetch chat messages from a Telegram channel
+   * Uses getUpdates API to retrieve new messages
+   */
+  async fetchChatMessages(
+    channelId: string,
+    botToken: string,
+    lastMessageTime?: Date
+  ): Promise<Array<{
+    id: string;
+    streamId: string;
+    platform: string;
+    authorId: string;
+    authorName: string;
+    authorImageUrl?: string;
+    message: string;
+    timestamp: Date;
+  }>> {
+    try {
+      // Use getUpdates to fetch new messages
+      const response = await axios.get(`https://api.telegram.org/bot${botToken}/getUpdates`, {
+        params: {
+          allowed_updates: ['message', 'channel_post'],
+          timeout: 0,
+        },
+      });
+
+      if (!response.data.ok) {
+        logger.error('Telegram getUpdates failed', { error: response.data.description });
+        return [];
+      }
+
+      const updates = response.data.result || [];
+      const messages = [];
+
+      for (const update of updates) {
+        const msg = update.message || update.channel_post;
+
+        if (!msg || msg.chat.id.toString() !== channelId) {
+          continue;
+        }
+
+        const messageTime = new Date(msg.date * 1000);
+
+        // Filter by time if provided
+        if (lastMessageTime && messageTime <= lastMessageTime) {
+          continue;
+        }
+
+        // Only process text messages
+        if (!msg.text) {
+          continue;
+        }
+
+        messages.push({
+          id: msg.message_id.toString(),
+          streamId: channelId,
+          platform: 'telegram',
+          authorId: msg.from?.id?.toString() || 'unknown',
+          authorName: msg.from?.username || msg.from?.first_name || 'Unknown',
+          authorImageUrl: undefined, // Telegram doesn't provide profile pictures via getUpdates
+          message: msg.text,
+          timestamp: messageTime,
+        });
+      }
+
+      return messages;
+    } catch (error) {
+      logger.error('Telegram fetchChatMessages failed', error);
+      return [];
+    }
+  }
+
+  /**
+   * Send a chat message to a Telegram channel
+   */
+  async sendChatMessage(
+    channelId: string,
+    text: string,
+    botToken: string
+  ): Promise<{ status: 'success' | 'error'; error?: string }> {
+    try {
+      const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        chat_id: channelId,
+        text,
+      });
+
+      if (response.data.ok) {
+        return { status: 'success' };
+      } else {
+        return {
+          status: 'error',
+          error: response.data.description || 'Failed to send message',
+        };
+      }
+    } catch (error) {
+      logger.error('Telegram sendChatMessage failed', error);
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.description || error.message;
+        return {
+          status: 'error',
+          error: `Failed to send message: ${message}`,
+        };
+      }
+      return {
+        status: 'error',
+        error: 'Failed to send message',
+      };
+    }
+  }
 }
 
 export const telegramAdapter = new TelegramAdapter();

@@ -347,6 +347,10 @@ export class YouTubeProvider implements StreamProvider {
 
       const liveChatId = broadcastResponse.data.items[0].snippet.liveChatId;
       if (!liveChatId) {
+        logger.warn('YouTube broadcast has no liveChatId - stream may not be live yet', {
+          platformStreamId,
+          broadcastStatus: broadcastResponse.data.items[0].status,
+        });
         return [];
       }
 
@@ -378,6 +382,12 @@ export class YouTubeProvider implements StreamProvider {
           timestamp: publishedAt,
         });
       }
+
+      logger.info('YouTube chat messages fetched', {
+        platformStreamId,
+        liveChatId,
+        count: messages.length,
+      });
 
       return messages;
     } catch (error) {

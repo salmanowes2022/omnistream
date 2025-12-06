@@ -872,6 +872,9 @@ function renderStreams() {
                             ${isStarting ? '⏳ Starting...' : '▶ Start Stream'}
                         </button>
                     `}
+                    <button onclick="connectToLiveChat('${stream.id}', '${communityId}')" class="btn btn-primary">
+                        💬 View Chat
+                    </button>
                     <button id="refresh-btn-${stream.id}" onclick="refreshStream('${stream.id}')" class="btn btn-secondary">
                         🔄 Refresh
                     </button>
@@ -1632,4 +1635,401 @@ function showScheduleError(message) {
 function hideScheduleError() {
     const el = document.getElementById('schedule-error');
     if (el) el.style.display = 'none';
+}
+
+// =======================
+// LIVE CHAT FUNCTIONALITY
+// =======================
+
+let chatWebSocket = null;
+let currentStreamId = null;
+let currentCommunityId = null;
+let chatMessages = [];
+let platformFilters = {
+    youtube: true,
+    telegram: true,
+    facebook: true
+};
+let platformStats = {
+    youtube: 0,
+    telegram: 0,
+    facebook: 0
+};
+
+/**
+ * Connect to live chat for a stream
+ * Auto-called when user selects a stream
+ */
+function connectToLiveChat(streamId, communityId) {
+    // Disconnect from previous stream if connected
+    if (chatWebSocket) {
+        disconnectFromLiveChat();
+    }
+
+    currentStreamId = streamId;
+    currentCommunityId = communityId;
+
+    // Show chat section
+    const chatSection = document.getElementById('live-chat-section');
+    if (chatSection) {
+        chatSection.style.display = 'block';
+    }
+
+    // Load chat history first
+    loadChatHistory(streamId);
+
+    // Connect to WebSocket
+    const wsUrl = 'ws://localhost:3000/ws/chat';
+    chatWebSocket = new WebSocket(wsUrl);
+
+    chatWebSocket.onopen = () => {
+        console.log('Chat WebSocket connected');
+        updateChatConnectionIndicator(true);
+
+        // Subscribe to stream
+        chatWebSocket.send(JSON.stringify({
+            type: 'subscribe',
+            streamId: streamId,
+            communityId: communityId
+        }));
+    };
+
+    chatWebSocket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('Chat message received:', data);
+
+        switch (data.type) {
+            case 'connected':
+                console.log('Chat server:', data.message);
+                break;
+
+            case 'subscribed':
+                console.log('Subscribed to stream:', data.streamId);
+                break;
+
+            case 'message':
+                handleIncomingChatMessage(data.message);
+                break;
+
+            case 'messageHighlighted':
+                highlightChatMessage(data.messageId);
+                break;
+
+            case 'messageSent':
+                console.log('Message sent successfully');
+                break;
+
+            case 'error':
+                console.error('Chat error:', data.error);
+                alert('Chat error: ' + data.error);
+                break;
+
+            default:
+                console.log('Unknown chat message type:', data.type);
+        }
+    };
+
+    chatWebSocket.onerror = (error) => {
+        console.error('Chat WebSocket error:', error);
+        updateChatConnectionIndicator(false);
+    };
+
+    chatWebSocket.onclose = () => {
+        console.log('Chat WebSocket closed');
+        updateChatConnectionIndicator(false);
+        chatWebSocket = null;
+    };
+}
+
+/**
+ * Disconnect from live chat
+ */
+function disconnectFromLiveChat() {
+    if (chatWebSocket) {
+        chatWebSocket.send(JSON.stringify({ type: 'unsubscribe' }));
+        chatWebSocket.close();
+        chatWebSocket = null;
+    }
+
+    updateChatConnectionIndicator(false);
+    currentStreamId = null;
+    currentCommunityId = null;
+}
+
+/**
+ * Load chat history from REST API
+ */
+async function loadChatHistory(streamId) {
+    try {
+        const response = await fetch(`/api/v1/chat/${streamId}`);
+        const data = await response.json();
+
+        if (data.success && data.data.messages) {
+            chatMessages = data.data.messages;
+            renderAllChatMessages();
+            updateChatStats();
+        }
+    } catch (error) {
+        console.error('Failed to load chat history:', error);
+    }
+}
+
+/**
+ * Handle incoming chat message from WebSocket
+ */
+function handleIncomingChatMessage(message) {
+    chatMessages.push(message);
+    platformStats[message.platform] = (platformStats[message.platform] || 0) + 1;
+
+    addChatMessageToUI(message);
+    updateChatStats();
+}
+
+/**
+ * Add chat message to UI
+ */
+function addChatMessageToUI(message) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
+
+    // Remove empty state if present
+    const emptyState = messagesContainer.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+
+    // Check if message should be shown based on filters
+    if (!platformFilters[message.platform]) {
+        return;
+    }
+
+    const messageEl = document.createElement('div');
+    messageEl.className = `chat-message platform-${message.platform}`;
+    messageEl.setAttribute('data-message-id', message.id);
+    messageEl.setAttribute('data-platform', message.platform);
+
+    const timestamp = new Date(message.timestamp).toLocaleTimeString();
+
+    messageEl.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span class="platform-badge ${message.platform}">${message.platform.toUpperCase()}</span>
+            <span style="font-size: 12px; color: #999;">${timestamp}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            ${message.authorImageUrl ? `<img src="${message.authorImageUrl}" alt="${escapeHtml(message.authorName)}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">` : ''}
+            <span style="font-weight: 600; font-size: 14px; color: #333;">${escapeHtml(message.authorName)}</span>
+        </div>
+        <div style="color: #555; line-height: 1.5; word-wrap: break-word;">${escapeHtml(message.message)}</div>
+        <div style="margin-top: 8px;">
+            <button onclick="highlightMessage('${message.id}', '${message.platform}')" style="background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 14px; transition: background 0.2s;" title="Highlight">⭐</button>
+        </div>
+    `;
+
+    messageEl.style.cssText = `
+        background: white;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 4px solid ${getPlatformColor(message.platform)};
+        transition: all 0.3s ease;
+    `;
+
+    messagesContainer.appendChild(messageEl);
+
+    // Auto-scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+/**
+ * Render all chat messages (for history load)
+ */
+function renderAllChatMessages() {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
+
+    messagesContainer.innerHTML = '';
+
+    chatMessages.forEach(message => {
+        addChatMessageToUI(message);
+    });
+}
+
+/**
+ * Send a chat message
+ */
+function sendChatMessage() {
+    const input = document.getElementById('chat-message-input');
+    if (!input) return;
+
+    const text = input.value.trim();
+    if (!text) return;
+
+    if (!chatWebSocket || chatWebSocket.readyState !== WebSocket.OPEN) {
+        alert('Not connected to chat server');
+        return;
+    }
+
+    chatWebSocket.send(JSON.stringify({
+        type: 'sendMessage',
+        text: text,
+        streamId: currentStreamId,
+        communityId: currentCommunityId
+    }));
+
+    input.value = '';
+}
+
+/**
+ * Highlight a message
+ */
+function highlightMessage(messageId, platform) {
+    if (!chatWebSocket || chatWebSocket.readyState !== WebSocket.OPEN) {
+        alert('Not connected to chat server');
+        return;
+    }
+
+    chatWebSocket.send(JSON.stringify({
+        type: 'highlight',
+        messageId: messageId,
+        platform: platform
+    }));
+}
+
+/**
+ * Handle message highlight response
+ */
+function highlightChatMessage(messageId) {
+    const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (messageEl) {
+        messageEl.style.background = '#fff9e6';
+        messageEl.style.borderLeftColor = '#ffc107';
+        messageEl.style.boxShadow = '0 4px 12px rgba(255, 193, 7, 0.3)';
+    }
+}
+
+/**
+ * Toggle platform filter
+ */
+function togglePlatformFilter(platform) {
+    platformFilters[platform] = !platformFilters[platform];
+    filterChatMessages();
+}
+
+/**
+ * Filter messages based on platform selection
+ */
+function filterChatMessages() {
+    const messages = document.querySelectorAll('.chat-message');
+    messages.forEach(msg => {
+        const platform = msg.getAttribute('data-platform');
+        if (platformFilters[platform]) {
+            msg.style.display = 'block';
+        } else {
+            msg.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * Clear all chat messages
+ */
+function clearChatMessages() {
+    if (confirm('Are you sure you want to clear all chat messages?')) {
+        chatMessages = [];
+        platformStats = { youtube: 0, telegram: 0, facebook: 0 };
+
+        const messagesContainer = document.getElementById('chat-messages');
+        if (messagesContainer) {
+            messagesContainer.innerHTML = `
+                <div class="empty-state" style="text-align: center; padding: 50px 20px; color: #999;">
+                    <p style="font-size: 18px; margin: 10px 0;">💬</p>
+                    <p>Chat cleared</p>
+                    <p style="font-size: 14px; opacity: 0.7;">New messages will appear here</p>
+                </div>
+            `;
+        }
+
+        updateChatStats();
+    }
+}
+
+/**
+ * Export chat messages to JSON
+ */
+function exportChatMessages() {
+    if (chatMessages.length === 0) {
+        alert('No messages to export');
+        return;
+    }
+
+    const dataStr = JSON.stringify(chatMessages, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-export-${currentStreamId}-${new Date().toISOString()}.json`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Update chat statistics
+ */
+function updateChatStats() {
+    const totalMessages = chatMessages.length;
+    const countEl = document.getElementById('chat-message-count');
+    if (countEl) {
+        countEl.textContent = `${totalMessages} message${totalMessages !== 1 ? 's' : ''}`;
+    }
+
+    // Update platform stats
+    Object.keys(platformStats).forEach(platform => {
+        const statEl = document.getElementById(`stat-${platform}`);
+        if (statEl) {
+            statEl.textContent = platformStats[platform];
+        }
+    });
+}
+
+/**
+ * Update connection indicator
+ */
+function updateChatConnectionIndicator(connected) {
+    const indicator = document.getElementById('chat-connection-indicator');
+    if (!indicator) return;
+
+    if (connected) {
+        indicator.className = 'status-dot connected';
+        indicator.title = 'Connected';
+    } else {
+        indicator.className = 'status-dot disconnected';
+        indicator.title = 'Disconnected';
+    }
+}
+
+/**
+ * Get platform color for border
+ */
+function getPlatformColor(platform) {
+    const colors = {
+        youtube: '#ff0000',
+        telegram: '#0088cc',
+        facebook: '#1877f2',
+        twitter: '#1da1f2',
+        instagram: '#e6683c',
+        tiktok: '#000000'
+    };
+    return colors[platform] || '#667eea';
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

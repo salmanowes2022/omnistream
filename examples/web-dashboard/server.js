@@ -629,13 +629,32 @@ app.get('/oauth/callback', (req, res) => {
   res.render('oauth-callback', { platform, code, state });
 });
 
+// Chat history proxy endpoint
+app.get('/api/v1/chat/:streamId', async (req, res) => {
+  try {
+    const { streamId } = req.params;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/chat/${streamId}`);
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch chat history', success: false });
+  }
+});
+
 // Debug page
 app.get('/debug', (req, res) => {
   res.render('debug');
+});
+
+// Chat page
+app.get('/chat', (req, res) => {
+  res.render('chat');
 });
 
 app.listen(PORT, () => {
   console.log(`🌐 Omnistream Web Dashboard running at http://localhost:${PORT}`);
   console.log(`📡 Connected to Omnistream API at ${OMNISTREAM_API_URL}`);
   console.log(`🔍 Debug page: http://localhost:${PORT}/debug`);
+  console.log(`💬 Chat page: http://localhost:${PORT}/chat`);
 });

@@ -519,16 +519,17 @@ export class PrismaDatabase {
     };
   }
 
-  async getChatMessages(streamId: string, since?: Date): Promise<ChatMessage[]> {
+  async getChatMessages(streamId: string, limit?: number, since?: Date): Promise<ChatMessage[]> {
     const messages = await this.prisma.chatMessage.findMany({
       where: {
         streamId,
         ...(since && { timestamp: { gt: since } }),
       },
-      orderBy: { timestamp: 'asc' },
+      orderBy: { timestamp: 'desc' },
+      take: limit || 100,
     });
 
-    return messages.map((msg) => {
+    return messages.reverse().map((msg) => {
       const metadata = parseJsonField<{ highlighted?: boolean }>(msg.metadata) || null; // SQLite/JSON: parse JSON value
       return {
         id: msg.id,

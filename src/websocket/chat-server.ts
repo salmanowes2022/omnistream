@@ -7,7 +7,7 @@ import { Server } from 'http';
 import { db } from '../database/index.js';
 import { providerRegistry } from '../providers/index.js';
 import { logger } from '../utils/logger.js';
-import { Platform } from '../core/interfaces.js';
+import { Platform, ChatMessage } from '../core/interfaces.js';
 
 interface ChatClient {
   ws: WebSocket;
@@ -87,6 +87,9 @@ export class ChatServer {
         break;
       case 'highlight':
         await this.handleHighlight(ws, message);
+        break;
+      case 'sendMessage':
+        await this.handleSendMessage(ws, message);
         break;
       default:
         ws.send(
@@ -263,6 +266,72 @@ export class ChatServer {
     }
   }
 
+  private async handleSendMessage(ws: WebSocket, message: WebSocketMessage): Promise<void> {
+    const client = this.clients.get(ws);
+    if (!client) {
+      ws.send(
+        JSON.stringify({
+          type: 'error',
+          error: 'Not subscribed to any stream',
+        })
+      );
+      return;
+    }
+
+    const { text } = message;
+
+    if (!text || typeof text !== 'string') {
+      ws.send(
+        JSON.stringify({
+          type: 'error',
+          error: 'Message text is required',
+        })
+      );
+      return;
+    }
+
+    try {
+      // Create a chat message object to save and broadcast
+      const chatMessage: ChatMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        streamId: client.streamId,
+        platform: Platform.TELEGRAM, // Assume Telegram for now
+        authorId: 'system',
+        authorName: 'You',
+        message: text,
+        timestamp: new Date(),
+      };
+
+      // Save message to database
+      await db.saveChatMessage(chatMessage);
+
+      // Broadcast to all connected clients
+      this.broadcastToStream(client.streamId, {
+        type: 'message',
+        message: chatMessage,
+      });
+
+      // Send success response
+      ws.send(
+        JSON.stringify({
+          type: 'messageSent',
+          success: true,
+          message: chatMessage,
+        })
+      );
+
+      logger.info('Message sent', { streamId: client.streamId, text });
+    } catch (error) {
+      logger.error('Send message error', error);
+      ws.send(
+        JSON.stringify({
+          type: 'error',
+          error: 'Failed to send message',
+        })
+      );
+    }
+  }
+
   private startPolling(streamId: string, communityId: string): void {
     const interval = setInterval(() => {
       void this.pollChatMessages(streamId, communityId);
@@ -306,11 +375,14 @@ export class ChatServer {
 
           // Save messages to database and broadcast
           for (const message of messages) {
-            await db.saveChatMessage(message);
+            // Override streamId with our internal streamId (provider uses platformStreamId)
+            const chatMessage = { ...message, streamId };
+
+            await db.saveChatMessage(chatMessage);
 
             this.broadcastToStream(streamId, {
               type: 'message',
-              message,
+              message: chatMessage,
             });
           }
 

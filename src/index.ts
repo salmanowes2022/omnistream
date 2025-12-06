@@ -20,6 +20,7 @@ import userAuthRouter from './api/routes/user-auth.js';
 import platformsRouter from './api/routes/platforms.js';
 import postsRouter from './api/routes/posts.js';
 import scheduleRouter from './api/routes/schedule.js';
+import chatRouter from './api/routes/chat.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -52,6 +53,7 @@ app.use('/api/v1/streams', streamsRouter);
 app.use('/api/v1/platforms', platformsRouter);
 app.use('/api/v1/posts', postsRouter);
 app.use('/api/v1/schedule', scheduleRouter);
+app.use('/api/v1/chat', chatRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

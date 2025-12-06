@@ -1,6 +1,6 @@
 /**
- * TikTok streaming provider stub
- * TikTok LIVE Access API requires special approval and is not generally available
+ * Twitter streaming provider stub
+ * Twitter/X does not have an official live streaming API for developers
  */
 
 import {
@@ -15,37 +15,39 @@ import { UnsupportedFeatureError } from '../../core/errors.js';
 import { config } from '../../utils/config.js';
 import { logger } from '../../utils/logger.js';
 
-export class TikTokProvider implements StreamProvider {
-  readonly platform = Platform.TIKTOK;
+export class TwitterProvider implements StreamProvider {
+  readonly platform = Platform.TWITTER;
 
-  private readonly TIKTOK_AUTH_URL = 'https://www.tiktok.com/v2/auth/authorize';
+  private readonly TWITTER_AUTH_URL = 'https://twitter.com/i/oauth2/authorize';
 
   getAuthUrl(communityId: string, redirectUri: string): string {
-    // Generate auth URL but note that LIVE Access API requires approval
+    // Generate auth URL but note that Twitter doesn't support live streaming via API
     const params = new URLSearchParams({
-      client_key: config.tiktok.clientKey,
-      redirect_uri: redirectUri,
       response_type: 'code',
-      scope: 'user.info.basic,video.list,live.room.info',
+      client_id: config.twitter.clientId,
+      redirect_uri: redirectUri,
+      scope: 'tweet.read tweet.write users.read offline.access',
       state: communityId,
+      code_challenge: 'challenge',
+      code_challenge_method: 'plain',
     });
 
-    logger.warn('TikTok LIVE Access API requires approval', { communityId });
-    return `${this.TIKTOK_AUTH_URL}?${params.toString()}`;
+    logger.warn('Twitter does not support live streaming via API', { communityId });
+    return `${this.TWITTER_AUTH_URL}?${params.toString()}`;
   }
 
   async exchangeCodeForTokens(_code: string, _redirectUri: string): Promise<OAuthToken> {
     throw new UnsupportedFeatureError(
-      'TikTok',
-      'OAuth token exchange - TikTok LIVE Access API requires special approval from TikTok. ' +
-        'Apply at https://developers.tiktok.com/apps/'
+      'Twitter',
+      'OAuth token exchange - Twitter does not provide a live streaming API. ' +
+        'Live streaming on Twitter/X must be done through the mobile app or web interface.'
     );
   }
 
   async refreshTokens(_refreshToken: string): Promise<OAuthToken> {
     throw new UnsupportedFeatureError(
-      'TikTok',
-      'Token refresh - TikTok LIVE Access API requires special approval'
+      'Twitter',
+      'Token refresh - Twitter does not provide a live streaming API'
     );
   }
 
@@ -55,30 +57,30 @@ export class TikTokProvider implements StreamProvider {
     _tokens: OAuthToken
   ): Promise<PlatformStream> {
     throw new UnsupportedFeatureError(
-      'TikTok',
-      'Stream creation - TikTok LIVE Access API requires special approval. ' +
-        'Live streaming on TikTok must be initiated from the mobile app.'
+      'Twitter',
+      'Stream creation - Twitter does not provide a live streaming API. ' +
+        'Live streaming on Twitter/X must be initiated from the mobile app or web interface.'
     );
   }
 
   async startStream(_platformStreamId: string, _tokens: OAuthToken): Promise<PlatformStream> {
     throw new UnsupportedFeatureError(
-      'TikTok',
-      'Stream control - TikTok does not support programmatic stream start'
+      'Twitter',
+      'Stream control - Twitter does not support programmatic stream start'
     );
   }
 
   async stopStream(_platformStreamId: string, _tokens: OAuthToken): Promise<PlatformStream> {
     throw new UnsupportedFeatureError(
-      'TikTok',
-      'Stream control - TikTok does not support programmatic stream stop'
+      'Twitter',
+      'Stream control - Twitter does not support programmatic stream stop'
     );
   }
 
   async getStreamStatus(_platformStreamId: string, _tokens: OAuthToken): Promise<PlatformStream> {
     throw new UnsupportedFeatureError(
-      'TikTok',
-      'Stream status - TikTok LIVE Access API requires special approval'
+      'Twitter',
+      'Stream status - Twitter does not provide a live streaming API'
     );
   }
 
@@ -96,8 +98,8 @@ export class TikTokProvider implements StreamProvider {
     _messageId: string,
     _tokens: OAuthToken
   ): Promise<boolean> {
-    throw new UnsupportedFeatureError('TikTok', 'message highlighting');
+    throw new UnsupportedFeatureError('Twitter', 'message highlighting');
   }
 }
 
-export const tiktokProvider = new TikTokProvider();
+export const twitterProvider = new TwitterProvider();

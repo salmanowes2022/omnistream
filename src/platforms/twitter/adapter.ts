@@ -167,6 +167,29 @@ export class TwitterAdapter {
       };
     }
   }
+
+  /**
+   * Fetch chat messages (not supported for Twitter)
+   */
+  async fetchChatMessages(): Promise<Array<{
+    id: string;
+    streamId: string;
+    platform: string;
+    authorId: string;
+    authorName: string;
+    authorImageUrl?: string;
+    message: string;
+    timestamp: Date;
+  }>> {
+    return [];
+  }
+
+  /**
+   * Send chat message (not supported for Twitter)
+   */
+  async sendChatMessage(): Promise<{ status: 'unsupported' }> {
+    return { status: 'unsupported' };
+  }
 }
 
 export const twitterAdapter = new TwitterAdapter();

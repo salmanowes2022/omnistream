@@ -183,12 +183,14 @@ class Database {
     return message;
   }
 
-  async getChatMessages(streamId: string, since?: Date): Promise<ChatMessage[]> {
+  async getChatMessages(streamId: string, limit?: number, since?: Date): Promise<ChatMessage[]> {
     const messages = this.chatMessages.get(streamId) || [];
+    let filtered = messages;
     if (since) {
-      return messages.filter((m) => m.timestamp > since);
+      filtered = messages.filter((m) => m.timestamp > since);
     }
-    return messages;
+    // Return last N messages
+    return filtered.slice(-(limit || 100));
   }
 
   async updateChatMessage(
