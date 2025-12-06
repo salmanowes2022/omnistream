@@ -557,12 +557,16 @@ app.delete('/api/streams/:streamId', async (req, res) => {
 app.post('/api/v1/platforms/facebook/connect', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/platforms/facebook/connect`, req.body, {
-      headers: {
-        Authorization: authHeader,
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/facebook/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
     res.json(response.data);
   } catch (error) {
     res
