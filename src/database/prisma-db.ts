@@ -207,7 +207,9 @@ export class PrismaDatabase {
     // IMPORTANT: Decrypt the tokens before returning them
     try {
       const decryptedAccessToken = decryptToken(socialAccount.accessToken);
-      const decryptedRefreshToken = socialAccount.refreshToken ? decryptToken(socialAccount.refreshToken) : '';
+      const decryptedRefreshToken = socialAccount.refreshToken
+        ? decryptToken(socialAccount.refreshToken)
+        : '';
 
       return {
         communityId,

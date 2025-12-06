@@ -134,7 +134,7 @@ export class TwitterAdapter {
         logger.warn('Twitter media upload not yet implemented', { mediaUrl });
       }
 
-      const response = await axios.post(TWITTER_POST_URL, tweetData, {
+      const response = await axios.post<{ data: { id: string } }>(TWITTER_POST_URL, tweetData, {
         headers: {
           Authorization: `Bearer ${credentials.accessToken}`,
           'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ export class TwitterAdapter {
       });
 
       const tweetId = response.data.data.id;
-      const username = (credentials.extra as { username?: string })?.username || 'user';
+      const username = (credentials.extra as { username?: string } | undefined)?.username || 'user';
       const postUrl = `https://twitter.com/${username}/status/${tweetId}`;
 
       logger.info('Tweet posted successfully', { tweetId, postUrl });
@@ -155,7 +155,8 @@ export class TwitterAdapter {
     } catch (error) {
       logger.error('Twitter post failed', error);
       if (axios.isAxiosError(error)) {
-        const message = error.response?.data?.detail || error.message;
+        const message =
+          (error.response?.data as { detail?: string } | undefined)?.detail || error.message;
         return {
           status: 'failed',
           error: `Failed to post tweet: ${message}`,
@@ -169,26 +170,48 @@ export class TwitterAdapter {
   }
 
   /**
+   * Schedule a tweet
+   * Note: Twitter API v2 does not support scheduled tweets for standard API access
+   * This feature requires Twitter API v1.1 Premium or Business tier
+   */
+  scheduleEvent(_params: {
+    title: string;
+    description?: string;
+    scheduledAt: Date;
+    credentials: { accessToken: string; refreshToken?: string };
+  }): Promise<{ status: string; postId?: string; error?: string }> {
+    logger.warn('Twitter scheduled tweets require Premium/Business API tier');
+
+    return Promise.resolve({
+      status: 'unsupported',
+      error:
+        'Twitter scheduled tweets are not supported with standard API access. Requires Premium or Business tier.',
+    });
+  }
+
+  /**
    * Fetch chat messages (not supported for Twitter)
    */
-  async fetchChatMessages(): Promise<Array<{
-    id: string;
-    streamId: string;
-    platform: string;
-    authorId: string;
-    authorName: string;
-    authorImageUrl?: string;
-    message: string;
-    timestamp: Date;
-  }>> {
-    return [];
+  fetchChatMessages(): Promise<
+    Array<{
+      id: string;
+      streamId: string;
+      platform: string;
+      authorId: string;
+      authorName: string;
+      authorImageUrl?: string;
+      message: string;
+      timestamp: Date;
+    }>
+  > {
+    return Promise.resolve([]);
   }
 
   /**
    * Send chat message (not supported for Twitter)
    */
-  async sendChatMessage(): Promise<{ status: 'unsupported' }> {
-    return { status: 'unsupported' };
+  sendChatMessage(): Promise<{ status: 'unsupported' }> {
+    return Promise.resolve({ status: 'unsupported' });
   }
 }
 

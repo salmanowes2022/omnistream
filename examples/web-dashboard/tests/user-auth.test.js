@@ -61,8 +61,12 @@ test.describe('User Authentication Integration Tests', () => {
 
     // Wait for either profile section or error
     const result = await Promise.race([
-      page.waitForSelector('#profile-section', { state: 'visible', timeout: 10000 }).then(() => 'success'),
-      page.waitForSelector('#auth-status.error', { state: 'visible', timeout: 10000 }).then(() => 'error')
+      page
+        .waitForSelector('#profile-section', { state: 'visible', timeout: 10000 })
+        .then(() => 'success'),
+      page
+        .waitForSelector('#auth-status.error', { state: 'visible', timeout: 10000 })
+        .then(() => 'error'),
     ]);
 
     if (result === 'error') {
@@ -137,8 +141,12 @@ test.describe('User Authentication Integration Tests', () => {
 
     // Wait for profile section
     const result = await Promise.race([
-      page.waitForSelector('#profile-section', { state: 'visible', timeout: 10000 }).then(() => 'success'),
-      page.waitForSelector('#auth-status.error', { state: 'visible', timeout: 10000 }).then(() => 'error')
+      page
+        .waitForSelector('#profile-section', { state: 'visible', timeout: 10000 })
+        .then(() => 'success'),
+      page
+        .waitForSelector('#auth-status.error', { state: 'visible', timeout: 10000 })
+        .then(() => 'error'),
     ]);
 
     if (result === 'error') {
@@ -198,8 +206,12 @@ test.describe('User Authentication Integration Tests', () => {
 
     // Should still work
     const result = await Promise.race([
-      page.waitForSelector('#profile-section', { state: 'visible', timeout: 10000 }).then(() => 'success'),
-      page.waitForSelector('#auth-status.error', { state: 'visible', timeout: 10000 }).then(() => 'error')
+      page
+        .waitForSelector('#profile-section', { state: 'visible', timeout: 10000 })
+        .then(() => 'success'),
+      page
+        .waitForSelector('#auth-status.error', { state: 'visible', timeout: 10000 })
+        .then(() => 'error'),
     ]);
 
     if (result === 'error') {

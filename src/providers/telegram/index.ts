@@ -12,7 +12,6 @@ import {
   StreamProvider,
 } from '../../core/interfaces.js';
 import { UnsupportedFeatureError } from '../../core/errors.js';
-import { logger } from '../../utils/logger.js';
 
 export class TelegramProvider implements StreamProvider {
   readonly platform = Platform.TELEGRAM;

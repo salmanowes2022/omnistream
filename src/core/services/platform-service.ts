@@ -12,7 +12,7 @@ import { youtubeAdapter } from '../../platforms/youtube/adapter.js';
 import { facebookAdapter } from '../../platforms/facebook/adapter.js';
 import { instagramAdapter } from '../../platforms/instagram/adapter.js';
 import { logger } from '../../utils/logger.js';
-import type { PostData, PlatformPostResult } from '../../types/post.js';
+import type { PlatformPostResult, PostData } from '../../types/post.js';
 
 export interface ConnectTwitterRequest {
   userId: string;
@@ -426,7 +426,7 @@ export class PlatformService {
         case Platform.INSTAGRAM: {
           // Get extra data for Instagram Business ID
           const socialAccounts = await userService.getConnectedPlatforms(userId);
-          const igAccount = socialAccounts.find((acc) => acc.platform === platform);
+          const igAccount = socialAccounts.find((acc) => (acc.platform as Platform) === platform);
           const igBusinessId = (igAccount?.extra as { igBusinessId?: string })?.igBusinessId || '';
           return await instagramAdapter.validateConnection(tokens.accessToken, igBusinessId);
         }
@@ -460,7 +460,7 @@ export class PlatformService {
 
       // Get extra data (username, channelId, etc.)
       const socialAccounts = await userService.getConnectedPlatforms(userId);
-      const platformAccount = socialAccounts.find((acc) => acc.platform === platform);
+      const platformAccount = socialAccounts.find((acc) => (acc.platform as Platform) === platform);
       const extra = platformAccount?.extra || {};
 
       // Prepare credentials
@@ -506,7 +506,7 @@ export class PlatformService {
             credentials,
           });
           return {
-            status: result.status as 'posted' | 'failed' | 'unsupported',
+            status: result.status,
             postUrl: result.postUrl,
             postId: result.postId,
             error: result.error,
@@ -532,7 +532,7 @@ export class PlatformService {
             credentials,
           });
           return {
-            status: result.status as 'posted' | 'failed' | 'unsupported',
+            status: result.status,
             postUrl: result.postUrl,
             postId: result.postId,
             error: result.error,

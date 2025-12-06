@@ -7,7 +7,7 @@ import { Server } from 'http';
 import { db } from '../database/index.js';
 import { providerRegistry } from '../providers/index.js';
 import { logger } from '../utils/logger.js';
-import { Platform, ChatMessage } from '../core/interfaces.js';
+import { ChatMessage, Platform } from '../core/interfaces.js';
 
 interface ChatClient {
   ws: WebSocket;

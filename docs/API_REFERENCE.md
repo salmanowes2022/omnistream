@@ -29,6 +29,7 @@ Create a new user account.
 **Authentication:** Not required
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com",
@@ -37,6 +38,7 @@ Create a new user account.
 ```
 
 **Response:** `201 Created`
+
 ```json
 {
   "success": true,
@@ -53,6 +55,7 @@ Create a new user account.
 ```
 
 **Errors:**
+
 - `400 VALIDATION_ERROR` - Password doesn't meet requirements
 - `409 CONFLICT` - Email already exists
 
@@ -67,6 +70,7 @@ Authenticate a user and receive a JWT token.
 **Authentication:** Not required
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com",
@@ -75,6 +79,7 @@ Authenticate a user and receive a JWT token.
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -91,6 +96,7 @@ Authenticate a user and receive a JWT token.
 ```
 
 **Errors:**
+
 - `401 UNAUTHORIZED` - Invalid credentials
 
 ---
@@ -104,6 +110,7 @@ Get information about the currently authenticated user.
 **Authentication:** Required
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -119,6 +126,7 @@ Get information about the currently authenticated user.
 ```
 
 **Errors:**
+
 - `401 UNAUTHORIZED` - Invalid or missing token
 
 ---
@@ -132,6 +140,7 @@ Logout the current user (client-side token deletion).
 **Authentication:** Required
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -154,6 +163,7 @@ List all platforms connected to the current user.
 **Authentication:** Required
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -186,6 +196,7 @@ Manually connect a platform (for advanced use cases).
 **Authentication:** Required
 
 **Request Body:**
+
 ```json
 {
   "platform": "youtube",
@@ -200,6 +211,7 @@ Manually connect a platform (for advanced use cases).
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -226,9 +238,11 @@ Remove a connected platform.
 **Authentication:** Required
 
 **Parameters:**
+
 - `platform` - Platform name (youtube, facebook, tiktok, x, telegram)
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -251,6 +265,7 @@ Create a new streaming community.
 **Authentication:** Required
 
 **Request Body:**
+
 ```json
 {
   "name": "My Streaming Community"
@@ -258,6 +273,7 @@ Create a new streaming community.
 ```
 
 **Response:** `201 Created`
+
 ```json
 {
   "success": true,
@@ -281,6 +297,7 @@ Get all communities for the current user.
 **Authentication:** Required
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -308,9 +325,11 @@ Get the OAuth authorization URL for YouTube.
 **Authentication:** Not required
 
 **Query Parameters:**
+
 - `communityId` - Community ID to associate the connection
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -345,12 +364,15 @@ Check if a platform is connected for a community.
 **Authentication:** Not required
 
 **Parameters:**
+
 - `platform` - Platform name (youtube, facebook, tiktok)
 
 **Query Parameters:**
+
 - `communityId` - Community ID
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -374,12 +396,15 @@ Revoke OAuth tokens for a platform.
 **Authentication:** Not required
 
 **Parameters:**
+
 - `platform` - Platform name
 
 **Query Parameters:**
+
 - `communityId` - Community ID
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -402,6 +427,7 @@ Create a new multi-platform stream.
 **Authentication:** Not required (uses communityId)
 
 **Request Body:**
+
 ```json
 {
   "communityId": "community-uuid",
@@ -415,6 +441,7 @@ Create a new multi-platform stream.
 ```
 
 **Response:** `201 Created`
+
 ```json
 {
   "success": true,
@@ -456,9 +483,11 @@ Get all streams for a community.
 **Authentication:** Not required (uses communityId)
 
 **Query Parameters:**
+
 - `communityId` - Community ID
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -490,9 +519,11 @@ Start a stream on all platforms.
 **Authentication:** Not required (uses communityId)
 
 **Query Parameters:**
+
 - `communityId` - Community ID
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -521,9 +552,11 @@ Stop a stream on all platforms.
 **Authentication:** Not required (uses communityId)
 
 **Query Parameters:**
+
 - `communityId` - Community ID
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -551,9 +584,11 @@ Get current status of a stream on all platforms.
 **Authentication:** Not required (uses communityId)
 
 **Query Parameters:**
+
 - `communityId` - Community ID
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -583,9 +618,11 @@ Delete a stream.
 **Authentication:** Not required (uses communityId)
 
 **Query Parameters:**
+
 - `communityId` - Community ID
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,

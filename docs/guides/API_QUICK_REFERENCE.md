@@ -1,6 +1,7 @@
 # 🔌 API Quick Reference
 
 ## Base URL
+
 ```
 http://localhost:3000
 ```
@@ -10,11 +11,13 @@ http://localhost:3000
 ## Communities
 
 ### Create Community
+
 ```bash
 POST /api/v1/communities
 ```
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:3000/api/v1/communities \
   -H "Content-Type: application/json" \
@@ -22,6 +25,7 @@ curl -X POST http://localhost:3000/api/v1/communities \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -35,16 +39,19 @@ curl -X POST http://localhost:3000/api/v1/communities \
 ```
 
 ### List Communities
+
 ```bash
 GET /api/v1/communities
 ```
 
 **Request:**
+
 ```bash
 curl http://localhost:3000/api/v1/communities
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -64,6 +71,7 @@ curl http://localhost:3000/api/v1/communities
 ## OAuth / Authentication
 
 ### Get Auth URL
+
 ```bash
 GET /api/v1/auth/:platform/url?communityId=xxx
 ```
@@ -71,11 +79,13 @@ GET /api/v1/auth/:platform/url?communityId=xxx
 **Platforms:** `youtube`, `facebook`, `tiktok`
 
 **Request:**
+
 ```bash
 curl "http://localhost:3000/api/v1/auth/youtube/url?communityId=your-community-id"
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -86,6 +96,7 @@ curl "http://localhost:3000/api/v1/auth/youtube/url?communityId=your-community-i
 ```
 
 ### OAuth Callback
+
 ```bash
 GET /api/v1/auth/:platform/callback?code=xxx&state=xxx
 ```
@@ -93,16 +104,19 @@ GET /api/v1/auth/:platform/callback?code=xxx&state=xxx
 This is called automatically by the OAuth provider after user authorization.
 
 ### Check Auth Status
+
 ```bash
 GET /api/v1/auth/:platform/status?communityId=xxx
 ```
 
 **Request:**
+
 ```bash
 curl "http://localhost:3000/api/v1/auth/youtube/status?communityId=your-community-id"
 ```
 
 **Response (Connected):**
+
 ```json
 {
   "success": true,
@@ -114,6 +128,7 @@ curl "http://localhost:3000/api/v1/auth/youtube/status?communityId=your-communit
 ```
 
 **Response (Not Connected):**
+
 ```json
 {
   "success": true,
@@ -125,16 +140,19 @@ curl "http://localhost:3000/api/v1/auth/youtube/status?communityId=your-communit
 ```
 
 ### Disconnect Platform
+
 ```bash
 DELETE /api/v1/auth/:platform?communityId=xxx
 ```
 
 **Request:**
+
 ```bash
 curl -X DELETE "http://localhost:3000/api/v1/auth/youtube?communityId=your-community-id"
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -147,11 +165,13 @@ curl -X DELETE "http://localhost:3000/api/v1/auth/youtube?communityId=your-commu
 ## Streams
 
 ### Create Stream
+
 ```bash
 POST /api/v1/streams
 ```
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:3000/api/v1/streams \
   -H "Content-Type: application/json" \
@@ -164,6 +184,7 @@ curl -X POST http://localhost:3000/api/v1/streams \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -182,26 +203,31 @@ curl -X POST http://localhost:3000/api/v1/streams \
 ```
 
 ### Get Stream
+
 ```bash
 GET /api/v1/streams/:streamId
 ```
 
 **Request:**
+
 ```bash
 curl http://localhost:3000/api/v1/streams/your-stream-id
 ```
 
 ### List Streams by Community
+
 ```bash
 GET /api/v1/streams/community/:communityId
 ```
 
 **Request:**
+
 ```bash
 curl http://localhost:3000/api/v1/streams/community/your-community-id
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -217,16 +243,19 @@ curl http://localhost:3000/api/v1/streams/community/your-community-id
 ```
 
 ### Start Stream
+
 ```bash
 POST /api/v1/streams/:streamId/start
 ```
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:3000/api/v1/streams/your-stream-id/start
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -246,26 +275,31 @@ curl -X POST http://localhost:3000/api/v1/streams/your-stream-id/start
 ```
 
 ### Stop Stream
+
 ```bash
 POST /api/v1/streams/:streamId/stop
 ```
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:3000/api/v1/streams/your-stream-id/stop
 ```
 
 ### Get Stream Status
+
 ```bash
 GET /api/v1/streams/:streamId/status
 ```
 
 **Request:**
+
 ```bash
 curl http://localhost:3000/api/v1/streams/your-stream-id/status
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -284,11 +318,13 @@ curl http://localhost:3000/api/v1/streams/your-stream-id/status
 ```
 
 ### Delete Stream
+
 ```bash
 DELETE /api/v1/streams/:streamId
 ```
 
 **Request:**
+
 ```bash
 curl -X DELETE http://localhost:3000/api/v1/streams/your-stream-id
 ```
@@ -298,16 +334,19 @@ curl -X DELETE http://localhost:3000/api/v1/streams/your-stream-id
 ## Health Check
 
 ### Server Health
+
 ```bash
 GET /health
 ```
 
 **Request:**
+
 ```bash
 curl http://localhost:3000/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "ok",
@@ -320,19 +359,23 @@ curl http://localhost:3000/health
 ## WebSocket (Chat)
 
 ### Connect to Chat
+
 ```
 ws://localhost:3000
 ```
 
 **Example (JavaScript):**
+
 ```javascript
 const ws = new WebSocket('ws://localhost:3000');
 
 // Join stream chat
-ws.send(JSON.stringify({
-  type: 'join',
-  streamId: 'your-stream-id'
-}));
+ws.send(
+  JSON.stringify({
+    type: 'join',
+    streamId: 'your-stream-id',
+  })
+);
 
 // Receive messages
 ws.onmessage = (event) => {
@@ -342,6 +385,7 @@ ws.onmessage = (event) => {
 ```
 
 **Chat Message Format:**
+
 ```json
 {
   "id": "message-uuid",
@@ -374,6 +418,7 @@ All errors follow this format:
 ```
 
 **Common Error Codes:**
+
 - `VALIDATION_ERROR` - Invalid request data
 - `NOT_FOUND` - Resource not found
 - `UNAUTHORIZED` - Missing or invalid authentication
@@ -385,6 +430,7 @@ All errors follow this format:
 ## Quick Test Workflow
 
 ### 1. Create a Community
+
 ```bash
 curl -X POST http://localhost:3000/api/v1/communities \
   -H "Content-Type: application/json" \
@@ -394,6 +440,7 @@ curl -X POST http://localhost:3000/api/v1/communities \
 Save the `id` from response.
 
 ### 2. Get YouTube Auth URL
+
 ```bash
 curl "http://localhost:3000/api/v1/auth/youtube/url?communityId=YOUR_COMMUNITY_ID"
 ```
@@ -401,6 +448,7 @@ curl "http://localhost:3000/api/v1/auth/youtube/url?communityId=YOUR_COMMUNITY_I
 Open the URL in browser to authorize.
 
 ### 3. Check Auth Status
+
 ```bash
 curl "http://localhost:3000/api/v1/auth/youtube/status?communityId=YOUR_COMMUNITY_ID"
 ```
@@ -408,6 +456,7 @@ curl "http://localhost:3000/api/v1/auth/youtube/status?communityId=YOUR_COMMUNIT
 Should show `"connected": true`.
 
 ### 4. Create a Stream
+
 ```bash
 curl -X POST http://localhost:3000/api/v1/streams \
   -H "Content-Type: application/json" \
@@ -421,11 +470,13 @@ curl -X POST http://localhost:3000/api/v1/streams \
 Save the `streamId` from response.
 
 ### 5. Start Streaming
+
 ```bash
 curl -X POST http://localhost:3000/api/v1/streams/YOUR_STREAM_ID/start
 ```
 
 ### 6. Check Stream Status
+
 ```bash
 curl http://localhost:3000/api/v1/streams/YOUR_STREAM_ID/status
 ```
@@ -435,6 +486,7 @@ curl http://localhost:3000/api/v1/streams/YOUR_STREAM_ID/status
 ## Testing Persistence
 
 ### Before Restart
+
 ```bash
 # Create community
 curl -X POST http://localhost:3000/api/v1/communities \
@@ -445,12 +497,14 @@ curl -X POST http://localhost:3000/api/v1/communities \
 ```
 
 ### Restart Server
+
 ```bash
 # Stop: Ctrl+C
 # Start: npm run dev
 ```
 
 ### After Restart
+
 ```bash
 # List communities
 curl http://localhost:3000/api/v1/communities
@@ -463,10 +517,12 @@ curl http://localhost:3000/api/v1/communities
 ## Rate Limiting
 
 Default limits:
+
 - **Window:** 15 minutes
 - **Max Requests:** 100 per window
 
 Can be configured in `.env`:
+
 ```bash
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
@@ -479,6 +535,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 **Base URL:** `http://localhost:3000`
 
 **Main Endpoints:**
+
 - Communities: `/api/v1/communities`
 - Auth: `/api/v1/auth/:platform`
 - Streams: `/api/v1/streams`

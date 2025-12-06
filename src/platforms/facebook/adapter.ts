@@ -9,14 +9,14 @@
 import axios from 'axios';
 import {
   exchangeFacebookCode,
+  FacebookTokenResponse,
+  FacebookUserInfo,
   getFacebookAuthUrl,
   getFacebookUserInfo,
   revokeFacebookToken,
-  FacebookTokenResponse,
-  FacebookUserInfo,
 } from './oauth.js';
 import { logger } from '../../utils/logger.js';
-import type { PostData, PlatformPostResult } from '../../types/post.js';
+import type { PlatformPostResult, PostData } from '../../types/post.js';
 
 export interface FacebookConnectionData {
   accessToken: string;
@@ -94,8 +94,14 @@ export class FacebookAdapter {
       }
 
       // Use the first page (or page from extra if specified)
+      interface FacebookPage {
+        id: string;
+        access_token: string;
+      }
       const pageId = extra?.pageId || pagesResponse.data.data[0].id;
-      const page = pagesResponse.data.data.find((p: any) => p.id === pageId) || pagesResponse.data.data[0];
+      const page =
+        (pagesResponse.data.data as FacebookPage[]).find((p) => p.id === pageId) ||
+        pagesResponse.data.data[0];
       const pageAccessToken = page.access_token;
 
       let postResponse;
@@ -134,11 +140,92 @@ export class FacebookAdapter {
         postId,
         postUrl: `https://facebook.com/${postId}`,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Facebook post failed', error);
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error?.message || error.message;
+        return {
+          status: 'failed',
+          error: errorMessage || 'Failed to post to Facebook',
+        };
+      }
       return {
         status: 'failed',
-        error: error.response?.data?.error?.message || error.message || 'Failed to post to Facebook',
+        error: 'Failed to post to Facebook',
+      };
+    }
+  }
+
+  /**
+   * Schedule a Facebook post
+   * Note: Facebook allows scheduled posts via the published parameter
+   */
+  async scheduleEvent(params: {
+    title: string;
+    description?: string;
+    scheduledAt: Date;
+    credentials: { accessToken: string; extra?: { pageId?: string } };
+  }): Promise<{ status: string; postId?: string; error?: string }> {
+    try {
+      const { description, scheduledAt, credentials } = params;
+      const { accessToken, extra } = credentials;
+
+      // Get user's pages
+      const pagesResponse = await axios.get('https://graph.facebook.com/v18.0/me/accounts', {
+        params: { access_token: accessToken },
+      });
+
+      if (!pagesResponse.data.data || pagesResponse.data.data.length === 0) {
+        return {
+          status: 'failed',
+          error: 'No Facebook pages found. You need a Facebook Page to schedule posts.',
+        };
+      }
+
+      // Use the first page (or page from extra if specified)
+      const pageId = extra?.pageId || pagesResponse.data.data[0].id;
+      const page =
+        pagesResponse.data.data.find((p: { id: string }) => p.id === pageId) ||
+        pagesResponse.data.data[0];
+      const pageAccessToken = page.access_token;
+
+      // Schedule the post
+      const scheduledPublishTime = Math.floor(scheduledAt.getTime() / 1000); // Convert to Unix timestamp
+
+      const postResponse = await axios.post(
+        `https://graph.facebook.com/v18.0/${page.id}/feed`,
+        {
+          message: description || '',
+          published: false, // Keep as draft
+          scheduled_publish_time: scheduledPublishTime,
+        },
+        {
+          params: { access_token: pageAccessToken },
+        }
+      );
+
+      const postId = postResponse.data.id;
+
+      logger.info('Facebook post scheduled successfully', { postId, scheduledAt });
+
+      return {
+        status: 'scheduled',
+        postId,
+      };
+    } catch (error: unknown) {
+      logger.error('Facebook scheduling failed', error);
+      if (axios.isAxiosError(error)) {
+        return {
+          status: 'failed',
+          error:
+            error.response?.data?.error?.message ||
+            error.message ||
+            'Failed to schedule Facebook post',
+        };
+      }
+      return {
+        status: 'failed',
+        error: 'Failed to schedule Facebook post',
       };
     }
   }

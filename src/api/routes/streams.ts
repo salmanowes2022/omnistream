@@ -139,7 +139,9 @@ router.get('/:streamId', async (req: Request, res: Response, next: NextFunction)
 router.post('/:streamId/start', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { streamId } = req.params;
-    const communityId = (req.body && req.body.communityId) || (req.query.communityId as string);
+    const communityId =
+      (req.body && (req.body as Record<string, unknown>).communityId) ||
+      (req.query.communityId as string);
 
     if (!communityId) {
       throw new ValidationError('communityId is required in request body');
@@ -166,7 +168,9 @@ router.post('/:streamId/start', async (req: Request, res: Response, next: NextFu
 router.post('/:streamId/stop', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { streamId } = req.params;
-    const communityId = (req.body && req.body.communityId) || (req.query.communityId as string);
+    const communityId =
+      (req.body && (req.body as Record<string, unknown>).communityId) ||
+      (req.query.communityId as string);
 
     if (!communityId) {
       throw new ValidationError('communityId is required in request body');

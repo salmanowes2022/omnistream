@@ -13,11 +13,13 @@ This guide will help you set up **real live streaming** from OBS Studio through 
 ### 1. Install FFmpeg
 
 **macOS:**
+
 ```bash
 brew install ffmpeg
 ```
 
 **Ubuntu/Debian:**
+
 ```bash
 sudo apt update
 sudo apt install ffmpeg
@@ -27,6 +29,7 @@ sudo apt install ffmpeg
 Download from https://ffmpeg.org/download.html and add to PATH
 
 **Verify installation:**
+
 ```bash
 ffmpeg -version
 ```
@@ -38,6 +41,7 @@ Download from: https://obsproject.com/download
 ### 3. YouTube OAuth Setup
 
 Make sure you have:
+
 - YouTube account
 - YouTube Data API v3 enabled in Google Cloud Console
 - OAuth 2.0 credentials configured in Omnistream
@@ -69,6 +73,7 @@ node rtmp-server.js
 ```
 
 You should see:
+
 ```
 🚀 Omnistream RTMP Server started!
 📡 Accepting RTMP streams on rtmp://localhost:1935/live/<streamKey>
@@ -76,6 +81,7 @@ You should see:
 ```
 
 **Keep this running!** This server:
+
 - Accepts RTMP streams from OBS on port 1935
 - Automatically relays them to YouTube
 - Uses FFmpeg to forward the video stream
@@ -125,12 +131,14 @@ Dashboard runs on: **http://localhost:4000**
    You'll see two sections:
 
    **🎬 OBS Ingest Settings (Stream to Omnistream):**
+
    ```
    Server: rtmp://localhost:1935/live
    Stream Key: stream_1234567890
    ```
 
    **📺 YouTube RTMP Settings (Direct to YouTube):**
+
    ```
    Server: rtmps://a.rtmp.youtube.com/live2
    Stream Key: xxxx-xxxx-xxxx-xxxx
@@ -168,6 +176,7 @@ Click **OK** to save
 ### 5.4 Check Audio
 
 Make sure you have audio sources:
+
 - **Mic/Auxiliary Audio** - Your microphone
 - **Desktop Audio** - Computer sound
 
@@ -183,6 +192,7 @@ Make sure you have audio sources:
 ### 6.2 Check RTMP Server Terminal:
 
 You should see:
+
 ```
 📡 Incoming RTMP stream with key: stream_1234567890
 ✅ Stream found: My First Live Stream
@@ -207,6 +217,7 @@ You should see:
 4. Share the URL with friends
 
 **YouTube URL format:**
+
 ```
 https://www.youtube.com/watch?v=xxxxxxxxxxx
 ```
@@ -229,6 +240,7 @@ https://www.youtube.com/watch?v=xxxxxxxxxxx
 ### Problem: "Connection failed" in OBS
 
 **Check:**
+
 - RTMP server is running (`node rtmp-server.js`)
 - Server shows: "📡 Accepting RTMP streams on rtmp://localhost:1935/live"
 - OBS server is exactly: `rtmp://localhost:1935/live` (not localhost:1935)
@@ -236,6 +248,7 @@ https://www.youtube.com/watch?v=xxxxxxxxxxx
 ### Problem: Stream key not working
 
 **Check:**
+
 - Copy the EXACT stream key from dashboard
 - Stream key format: `stream_1234567890`
 - No extra spaces or characters
@@ -243,6 +256,7 @@ https://www.youtube.com/watch?v=xxxxxxxxxxx
 ### Problem: OBS connects but YouTube shows offline
 
 **Check:**
+
 - RTMP server terminal for FFmpeg output
 - FFmpeg is installed: `ffmpeg -version`
 - YouTube broadcast was created (click START STREAM first)
@@ -251,6 +265,7 @@ https://www.youtube.com/watch?v=xxxxxxxxxxx
 ### Problem: "rtmpUrl not found" in dashboard
 
 **Check:**
+
 - Backend server is running
 - Clicked "START STREAM" button
 - YouTube OAuth is connected
@@ -259,9 +274,10 @@ https://www.youtube.com/watch?v=xxxxxxxxxxx
 ### Problem: FFmpeg relay fails
 
 **Check:**
+
 - FFmpeg path in `rtmp-server.js`:
   ```javascript
-  ffmpeg: '/usr/local/bin/ffmpeg'
+  ffmpeg: '/usr/local/bin/ffmpeg';
   ```
 - Find FFmpeg location: `which ffmpeg`
 - Update path if different
@@ -269,6 +285,7 @@ https://www.youtube.com/watch?v=xxxxxxxxxxx
 ### Problem: YouTube says "Stream is offline"
 
 **Wait a few seconds:**
+
 - YouTube takes 10-30 seconds to process incoming stream
 - Keep OBS streaming
 - Refresh YouTube page
@@ -343,14 +360,17 @@ To stream to **multiple platforms simultaneously**:
 ## Files Changed
 
 ### Backend:
+
 - `src/core/interfaces.ts` - Added rtmpUrl, streamKey, liveUrl to PlatformStream
 - `src/providers/youtube/index.ts` - Return YouTube RTMP ingestion info
 - `rtmp-server.js` - NEW: RTMP relay server
 
 ### Frontend:
+
 - `examples/web-dashboard/public/js/app.js` - Updated to show rtmp://localhost:1935
 
 ### New Files:
+
 - `OBS_STREAMING_GUIDE.md` - This guide
 - `rtmp-server.js` - RTMP server for OBS ingestion
 
@@ -359,25 +379,30 @@ To stream to **multiple platforms simultaneously**:
 ## Quick Reference
 
 ### RTMP Server
+
 ```bash
 node rtmp-server.js
 ```
 
 ### Omnistream API
+
 ```bash
 npm run dev
 ```
 
 ### Dashboard
+
 ```bash
 cd examples/web-dashboard && npm start
 ```
 
 ### OBS Settings
+
 - Server: `rtmp://localhost:1935/live`
 - Key: From dashboard
 
 ### YouTube Watch URL
+
 - Click "🔗 Watch Live" in dashboard
 - Or: `https://www.youtube.com/watch?v=<broadcastId>`
 
@@ -386,6 +411,7 @@ cd examples/web-dashboard && npm start
 ## Support
 
 For issues:
+
 - Check RTMP server logs
 - Check Omnistream API logs
 - Check browser console (F12)

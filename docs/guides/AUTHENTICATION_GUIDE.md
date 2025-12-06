@@ -26,6 +26,7 @@ npm run dev
 ### 4. Access the Dashboard
 
 Navigate to:
+
 - Registration: `http://localhost:8080/register.html`
 - Login: `http://localhost:8080/login.html`
 - Dashboard: `http://localhost:8080/dashboard.html`
@@ -56,6 +57,7 @@ curl -X POST http://localhost:3000/api/v1/user-auth/register \
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -104,13 +106,13 @@ curl -X GET http://localhost:3000/api/v1/user-auth/me \
 
 ### Get Current User Info
 
-
 ```bash
 curl -X GET http://localhost:3000/api/v1/user-auth/me \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -132,6 +134,7 @@ Response:
 Platforms are connected via OAuth flow. The system securely stores encrypted access tokens.
 
 **Supported Platforms:**
+
 - YouTube
 - Facebook
 - TikTok
@@ -146,6 +149,7 @@ curl -X GET http://localhost:3000/api/v1/user-auth/platforms \
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -195,6 +199,7 @@ curl -X GET http://localhost:3000/api/v1/communities \
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -247,6 +252,7 @@ Response:
 ### Common Errors
 
 **401 Unauthorized**
+
 ```json
 {
   "success": false,
@@ -258,6 +264,7 @@ Response:
 ```
 
 **Validation Error**
+
 ```json
 {
   "success": false,
@@ -269,6 +276,7 @@ Response:
 ```
 
 **Conflict Error**
+
 ```json
 {
   "success": false,
@@ -314,13 +322,13 @@ auth.logout(); // Clears token and redirects to login
 // Get auth header
 const headers = {
   'Content-Type': 'application/json',
-  ...auth.getAuthHeader()
+  ...auth.getAuthHeader(),
 };
 
 // Make authenticated request
 const response = await fetch('/api/v1/communities', {
   method: 'GET',
-  headers: headers
+  headers: headers,
 });
 ```
 
@@ -339,6 +347,7 @@ auth.requireAuth(); // Redirects to login if not authenticated
 ## Database Schema
 
 ### User Table
+
 ```sql
 CREATE TABLE users (
   id TEXT PRIMARY KEY,
@@ -350,6 +359,7 @@ CREATE TABLE users (
 ```
 
 ### SocialAccount Table
+
 ```sql
 CREATE TABLE social_accounts (
   id TEXT PRIMARY KEY,
@@ -367,6 +377,7 @@ CREATE TABLE social_accounts (
 ```
 
 ### Community Table (Updated)
+
 ```sql
 CREATE TABLE communities (
   id TEXT PRIMARY KEY,
@@ -381,22 +392,27 @@ CREATE TABLE communities (
 ## Troubleshooting
 
 ### "No authorization header provided"
+
 - Ensure you're including `Authorization: Bearer <token>` header
 - Check that token is valid and not expired
 
 ### "Invalid token"
+
 - Token may be malformed or corrupted
 - Try logging in again to get a new token
 
 ### "Token expired"
+
 - Tokens expire after 7 days
 - Login again to get a new token
 
 ### "User with this email already exists"
+
 - Email is already registered
 - Try logging in or use password reset (to be implemented)
 
 ### Password Requirements Not Met
+
 - Ensure password has:
   - At least 8 characters
   - One uppercase letter (A-Z)

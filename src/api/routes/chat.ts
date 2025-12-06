@@ -3,7 +3,7 @@
  * Provides REST endpoints for chat history
  */
 
-import { Router, Request, Response } from 'express';
+import { Request, Response, Router } from 'express';
 import { db } from '../../database/index.js';
 import { logger } from '../../utils/logger.js';
 
@@ -27,7 +27,7 @@ router.get('/:streamId', async (req: Request, res: Response) => {
     // Verify stream exists
     try {
       await db.getStream(streamId);
-    } catch (error) {
+    } catch {
       return res.status(404).json({
         success: false,
         error: 'Stream not found',

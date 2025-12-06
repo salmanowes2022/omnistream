@@ -1,6 +1,14 @@
 /**
  * Facebook streaming provider implementation
  * Uses Facebook Graph API for Live Video
+ *
+ * IMPORTANT: Facebook Live API requires Meta App Review and Business Verification
+ * - Personal/development apps cannot request publish_video and pages_manage_metadata permissions
+ * - Attempting to add these permissions may result in Meta blocking the developer account
+ * - The Live API will return permissions errors until the app undergoes Meta's business verification
+ * - This is standard Meta policy for production apps - see: https://developers.facebook.com/docs/app-review
+ *
+ * The code below is production-ready but can only be tested with an approved business app.
  */
 
 import axios from 'axios';
@@ -28,7 +36,15 @@ export class FacebookProvider implements StreamProvider {
     const params = new URLSearchParams({
       client_id: config.facebook.appId,
       redirect_uri: redirectUri,
-      scope: 'pages_manage_posts,pages_read_engagement,pages_manage_engagement,pages_show_list,publish_video',
+      scope: [
+        'pages_manage_posts',
+        'pages_read_engagement',
+        'pages_manage_engagement',
+        'pages_show_list',
+        'publish_video',
+        'pages_manage_metadata', // Required for page metadata
+        'pages_read_user_content', // Required to read page content
+      ].join(','),
       state: communityId,
     });
 
@@ -64,7 +80,13 @@ export class FacebookProvider implements StreamProvider {
       return {
         accessToken: longLivedResponse.data.access_token,
         expiresAt: new Date(Date.now() + (longLivedResponse.data.expires_in || 5184000) * 1000),
-        scope: ['pages_manage_posts', 'pages_read_engagement', 'pages_manage_engagement', 'pages_show_list', 'publish_video'],
+        scope: [
+          'pages_manage_posts',
+          'pages_read_engagement',
+          'pages_manage_engagement',
+          'pages_show_list',
+          'publish_video',
+        ],
       };
     } catch (error) {
       logger.error('Facebook token exchange failed', error);
@@ -89,6 +111,12 @@ export class FacebookProvider implements StreamProvider {
     tokens: OAuthToken
   ): Promise<PlatformStream> {
     try {
+      // NOTE: If you get permissions errors, ensure your Meta app has:
+      // 1. publish_video permission (requires App Review)
+      // 2. pages_manage_metadata permission (requires App Review)
+      // 3. Business Verification completed
+      // Personal developer accounts will receive permissions errors until approved.
+
       // First, get the user's pages
       const pagesResponse = await axios.get(`${this.FACEBOOK_GRAPH_URL}/me/accounts`, {
         headers: { Authorization: `Bearer ${tokens.accessToken}` },
@@ -106,25 +134,40 @@ export class FacebookProvider implements StreamProvider {
       const page = pagesResponse.data.data[0];
       const pageAccessToken = page.access_token;
 
-      // Create a live video
-      const liveVideoResponse = await axios.post(
+      // Create a live video with RTMP stream
+      // Note: Facebook deprecated SCHEDULED_LIVE and SCHEDULED_UNPUBLISHED statuses
+      // Now we just create the stream without a status, which defaults to unpublished
+      const liveVideoResponse = await axios.post<{
+        id: string;
+        stream_url: string;
+        secure_stream_url: string;
+        stream_key?: string;
+      }>(
         `${this.FACEBOOK_GRAPH_URL}/${page.id}/live_videos`,
         {
           title: config.title,
           description: config.description || '',
-          status: 'SCHEDULED_UNPUBLISHED',
+          // Don't set status - let it default to unpublished
         },
         {
           headers: { Authorization: `Bearer ${pageAccessToken}` },
+          params: {
+            fields: 'id,stream_url,secure_stream_url',
+          },
         }
       );
 
-      const { id } = liveVideoResponse.data;
+      const { id, stream_url, secure_stream_url } = liveVideoResponse.data;
+
+      // Facebook returns the full RTMP URL in stream_url
+      // Format: rtmps://live-api-s.facebook.com:443/rtmp/{stream_key}
+      const rtmpUrl = secure_stream_url || stream_url;
 
       logger.info('Facebook live video created', {
         communityId,
         videoId: id,
         pageId: page.id,
+        rtmpUrl,
       });
 
       return {
@@ -132,9 +175,30 @@ export class FacebookProvider implements StreamProvider {
         platformStreamId: id,
         streamUrl: `https://www.facebook.com/${id}`,
         status: StreamStatus.SCHEDULED,
+        rtmpUrl,
+        metadata: {
+          pageId: page.id,
+          pageName: page.name,
+        },
       };
     } catch (error) {
       logger.error('Facebook stream creation failed', error);
+      if (axios.isAxiosError(error)) {
+        const errorMessage =
+          error.response?.data?.error?.message || error.response?.data?.error || error.message;
+        const errorCode = error.response?.data?.error?.code;
+        logger.error('Facebook API error details', {
+          message: errorMessage,
+          code: errorCode,
+          status: error.response?.status,
+        });
+        throw new PlatformError(
+          'Facebook',
+          `Failed to create stream: ${errorMessage}`,
+          error.response?.status || 500,
+          error
+        );
+      }
       throw new PlatformError('Facebook', 'Failed to create stream', 500, error);
     }
   }
@@ -205,12 +269,16 @@ export class FacebookProvider implements StreamProvider {
 
       let streamStatus: StreamStatus;
       switch (status) {
-        case 'SCHEDULED_UNPUBLISHED':
-        case 'SCHEDULED_LIVE':
-          streamStatus = StreamStatus.SCHEDULED;
-          break;
+        case 'LIVE':
         case 'LIVE_NOW':
           streamStatus = StreamStatus.LIVE;
+          break;
+        case 'SCHEDULED_UNPUBLISHED': // Deprecated but may still exist
+        case 'SCHEDULED_LIVE': // Deprecated but may still exist
+          streamStatus = StreamStatus.SCHEDULED;
+          break;
+        case 'UNPUBLISHED':
+          streamStatus = StreamStatus.IDLE;
           break;
         case 'PROCESSING':
         case 'VOD':

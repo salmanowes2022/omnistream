@@ -10,12 +10,12 @@ import {
   exchangeInstagramCode,
   getInstagramAuthUrl,
   getInstagramUserInfo,
-  revokeInstagramToken,
   InstagramTokenResponse,
   InstagramUserInfo,
+  revokeInstagramToken,
 } from './oauth.js';
 import { logger } from '../../utils/logger.js';
-import type { PostData, PlatformPostResult } from '../../types/post.js';
+import type { PlatformPostResult, PostData } from '../../types/post.js';
 
 export interface InstagramConnectionData {
   accessToken: string;
@@ -115,7 +115,8 @@ export class InstagramAdapter {
       if (!mediaUrl) {
         return {
           status: 'failed',
-          error: 'Media URL is required for Instagram posts. Instagram does not support text-only posts.',
+          error:
+            'Media URL is required for Instagram posts. Instagram does not support text-only posts.',
         };
       }
 
@@ -180,26 +181,48 @@ export class InstagramAdapter {
   }
 
   /**
+   * Schedule an Instagram post
+   * Note: Instagram Graph API does not support native post scheduling
+   * Scheduled posts must be managed via Facebook Business Suite or external schedulers
+   */
+  scheduleEvent(_params: {
+    title: string;
+    description?: string;
+    scheduledAt: Date;
+    credentials: { accessToken: string; extra?: { igBusinessId?: string } };
+  }): Promise<{ status: string; postId?: string; error?: string }> {
+    logger.warn('Instagram does not support native scheduled posts via Graph API');
+
+    return Promise.resolve({
+      status: 'unsupported',
+      error:
+        'Instagram Graph API does not support scheduled posts. Use Facebook Business Suite for scheduling.',
+    });
+  }
+
+  /**
    * Fetch chat messages (not supported for Instagram)
    */
-  async fetchChatMessages(): Promise<Array<{
-    id: string;
-    streamId: string;
-    platform: string;
-    authorId: string;
-    authorName: string;
-    authorImageUrl?: string;
-    message: string;
-    timestamp: Date;
-  }>> {
-    return [];
+  fetchChatMessages(): Promise<
+    Array<{
+      id: string;
+      streamId: string;
+      platform: string;
+      authorId: string;
+      authorName: string;
+      authorImageUrl?: string;
+      message: string;
+      timestamp: Date;
+    }>
+  > {
+    return Promise.resolve([]);
   }
 
   /**
    * Send chat message (not supported for Instagram)
    */
-  async sendChatMessage(): Promise<{ status: 'unsupported' }> {
-    return { status: 'unsupported' };
+  sendChatMessage(): Promise<{ status: 'unsupported' }> {
+    return Promise.resolve({ status: 'unsupported' });
   }
 }
 

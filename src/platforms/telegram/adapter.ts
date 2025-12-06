@@ -20,6 +20,28 @@ export interface TelegramBotInfo {
   canReadAllGroupMessages: boolean;
 }
 
+interface TelegramUpdate {
+  update_id: number;
+  message?: TelegramMessage;
+  channel_post?: TelegramMessage;
+}
+
+interface TelegramMessage {
+  message_id: number;
+  date: number;
+  chat: {
+    id: number;
+    type: string;
+  };
+  text?: string;
+  from?: {
+    id: number;
+    is_bot: boolean;
+    first_name: string;
+    username?: string;
+  };
+}
+
 export interface TelegramConnectionData {
   botToken: string;
   botUsername: string;
@@ -222,27 +244,21 @@ export class TelegramAdapter {
 
         if (isImage) {
           // Send photo with caption
-          const response = await axios.post(
-            `https://api.telegram.org/bot${botToken}/sendPhoto`,
-            {
-              chat_id: channelId,
-              photo: mediaUrl,
-              caption: content,
-              parse_mode: 'Markdown',
-            }
-          );
+          const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+            chat_id: channelId,
+            photo: mediaUrl,
+            caption: content,
+            parse_mode: 'Markdown',
+          });
           messageId = response.data.result.message_id;
         } else if (isVideo) {
           // Send video with caption
-          const response = await axios.post(
-            `https://api.telegram.org/bot${botToken}/sendVideo`,
-            {
-              chat_id: channelId,
-              video: mediaUrl,
-              caption: content,
-              parse_mode: 'Markdown',
-            }
-          );
+          const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendVideo`, {
+            chat_id: channelId,
+            video: mediaUrl,
+            caption: content,
+            parse_mode: 'Markdown',
+          });
           messageId = response.data.result.message_id;
         } else {
           // Send as document if unknown type
@@ -259,14 +275,11 @@ export class TelegramAdapter {
         }
       } else {
         // Send text-only message
-        const response = await axios.post(
-          `https://api.telegram.org/bot${botToken}/sendMessage`,
-          {
-            chat_id: channelId,
-            text: content,
-            parse_mode: 'Markdown',
-          }
-        );
+        const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          chat_id: channelId,
+          text: content,
+          parse_mode: 'Markdown',
+        });
         messageId = response.data.result.message_id;
       }
 
@@ -300,16 +313,18 @@ export class TelegramAdapter {
     channelId: string,
     botToken: string,
     lastMessageTime?: Date
-  ): Promise<Array<{
-    id: string;
-    streamId: string;
-    platform: string;
-    authorId: string;
-    authorName: string;
-    authorImageUrl?: string;
-    message: string;
-    timestamp: Date;
-  }>> {
+  ): Promise<
+    Array<{
+      id: string;
+      streamId: string;
+      platform: string;
+      authorId: string;
+      authorName: string;
+      authorImageUrl?: string;
+      message: string;
+      timestamp: Date;
+    }>
+  > {
     try {
       // Use getUpdates to fetch new messages
       const response = await axios.get(`https://api.telegram.org/bot${botToken}/getUpdates`, {
@@ -324,7 +339,7 @@ export class TelegramAdapter {
         return [];
       }
 
-      const updates = response.data.result || [];
+      const updates = (response.data.result || []) as TelegramUpdate[];
       const messages = [];
 
       for (const update of updates) {
@@ -401,6 +416,26 @@ export class TelegramAdapter {
         error: 'Failed to send message',
       };
     }
+  }
+
+  /**
+   * Schedule a Telegram post
+   * Note: Telegram Bot API does not support native post scheduling
+   * Posts would need to be scheduled using an external scheduler and stored in database
+   */
+  scheduleEvent(_params: {
+    title: string;
+    description?: string;
+    scheduledAt: Date;
+    credentials: { accessToken: string; extra?: { botToken?: string; channelId?: string } };
+  }): Promise<{ status: string; postId?: string; error?: string }> {
+    logger.warn('Telegram does not support native scheduled posts via Bot API');
+
+    return Promise.resolve({
+      status: 'unsupported',
+      error:
+        'Telegram Bot API does not support scheduled posts. Use an external scheduler to delay message sending.',
+    });
   }
 }
 

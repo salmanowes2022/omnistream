@@ -156,19 +156,27 @@ export class YouTubeAdapter {
   }
 
   /**
-   * Post to YouTube (not supported yet - YouTube doesn't have a direct "post" API)
-   * YouTube Community Posts require manual creation through YouTube Studio
-   * This is a stub for future implementation
+   * Post to YouTube Community Tab
+   *
+   * IMPORTANT: YouTube Data API v3 does NOT support Community Posts
+   * - Community Posts (text, images, polls, announcements) have no public API
+   * - The YouTube Data API only supports video uploads and live broadcasts
+   * - This limitation affects ALL developers, not just this implementation
+   * - See: https://developers.google.com/youtube/v3/docs
+   *
+   * This method returns 'unsupported' to maintain consistent API design.
    */
-  post(params: {
+  async post(_params: {
     content: string;
     mediaUrl?: string;
     credentials: { accessToken: string; refreshToken?: string; extra?: unknown };
-  }): Promise<{ status: string; error?: string }> {
-    logger.info('YouTube post attempted but not supported', { content: params.content });
+  }): Promise<{ status: string; postId?: string; postUrl?: string; error?: string }> {
+    logger.warn('YouTube Community Posts are not supported by YouTube Data API v3');
+
     return Promise.resolve({
       status: 'unsupported',
-      error: 'YouTube direct posting is not yet supported. Use YouTube Studio for Community Posts.',
+      error:
+        'YouTube does not provide any API for Community Posts (text, images, polls). The YouTube Data API only supports video uploads and live broadcasts. This is a platform limitation affecting all developers.',
     });
   }
 
@@ -245,16 +253,18 @@ export class YouTubeAdapter {
     liveChatId: string,
     accessToken: string,
     lastMessageTime?: Date
-  ): Promise<Array<{
-    id: string;
-    streamId: string;
-    platform: string;
-    authorId: string;
-    authorName: string;
-    authorImageUrl?: string;
-    message: string;
-    timestamp: Date;
-  }>> {
+  ): Promise<
+    Array<{
+      id: string;
+      streamId: string;
+      platform: string;
+      authorId: string;
+      authorName: string;
+      authorImageUrl?: string;
+      message: string;
+      timestamp: Date;
+    }>
+  > {
     try {
       const response = await axios.get('https://www.googleapis.com/youtube/v3/liveChat/messages', {
         headers: {
@@ -268,7 +278,11 @@ export class YouTubeAdapter {
       });
 
       const messages = [];
-      for (const item of response.data.items || []) {
+      for (const item of (response.data.items || []) as Array<{
+        id: string;
+        snippet: { publishedAt: string; displayMessage: string };
+        authorDetails: { channelId: string; displayName: string; profileImageUrl?: string };
+      }>) {
         const publishedAt = new Date(item.snippet.publishedAt);
 
         if (lastMessageTime && publishedAt <= lastMessageTime) {
@@ -297,8 +311,8 @@ export class YouTubeAdapter {
   /**
    * Send chat message (not supported for YouTube)
    */
-  async sendChatMessage(): Promise<{ status: 'unsupported' }> {
-    return { status: 'unsupported' };
+  sendChatMessage(): Promise<{ status: 'unsupported' }> {
+    return Promise.resolve({ status: 'unsupported' });
   }
 }
 

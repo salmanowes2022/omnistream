@@ -30,14 +30,22 @@ interface AxiosLikeError {
 
 const parseYouTubeError = (error: unknown): string => {
   const err = error as AxiosLikeError;
-  const apiErrorObj = (err.response?.data as { error?: any; message?: string } | undefined)?.error;
-  const apiMessage =
-    typeof apiErrorObj === 'string'
-      ? apiErrorObj
-      : apiErrorObj?.message ||
-        (Array.isArray(apiErrorObj?.errors) ? apiErrorObj.errors[0]?.message : undefined);
-  const message =
-    apiMessage || (err.response?.data as { message?: string } | undefined)?.message || err.message;
+  const responseData = err.response?.data as { error?: unknown; message?: string } | undefined;
+  const apiErrorObj = responseData?.error;
+
+  let apiMessage: string | undefined;
+  if (typeof apiErrorObj === 'string') {
+    apiMessage = apiErrorObj;
+  } else if (apiErrorObj && typeof apiErrorObj === 'object') {
+    const errorObj = apiErrorObj as Record<string, unknown>;
+    apiMessage =
+      (errorObj.message as string) ||
+      (Array.isArray(errorObj.errors)
+        ? ((errorObj.errors[0] as Record<string, unknown>)?.message as string)
+        : undefined);
+  }
+
+  const message = apiMessage || responseData?.message || err.message;
   if (message) {
     return message;
   }

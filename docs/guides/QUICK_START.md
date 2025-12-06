@@ -1,6 +1,7 @@
 # 🚀 Omnistream OBS Quick Start
 
 ## Prerequisites
+
 ```bash
 # Install FFmpeg
 brew install ffmpeg  # macOS
@@ -14,22 +15,28 @@ ffmpeg -version
 ## Step 1: Start Servers (3 terminals)
 
 ### Terminal 1: Omnistream API
+
 ```bash
 npm run dev
 ```
+
 **Runs on:** http://localhost:3000
 
 ### Terminal 2: RTMP Server
+
 ```bash
 node rtmp-server.js
 ```
+
 **Accepts streams on:** rtmp://localhost:1935/live
 
 ### Terminal 3: Dashboard
+
 ```bash
 cd examples/web-dashboard
 npm start
 ```
+
 **Dashboard:** http://localhost:4000
 
 ---
@@ -80,10 +87,12 @@ npm start
 ## Troubleshooting
 
 **OBS won't connect?**
+
 - RTMP server running?
 - Server = `rtmp://localhost:1935/live` (exact)
 
 **YouTube offline?**
+
 - Wait 10-30 seconds
 - Check RTMP server logs
 - Verify FFmpeg installed
