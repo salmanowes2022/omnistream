@@ -21,6 +21,27 @@ let platformStats = {
   instagram: 0,
   tiktok: 0,
 };
+let sendPlatforms = [];
+
+/**
+ * Initialize inputs from query params or localStorage
+ */
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const communityInput = document.getElementById('community-id');
+  const streamInput = document.getElementById('stream-id');
+
+  const storedCommunity = params.get('communityId') || localStorage.getItem('omnistream_community_id');
+  const storedStream = params.get('streamId') || localStorage.getItem('omnistream_stream_id');
+
+  if (communityInput && storedCommunity) communityInput.value = storedCommunity;
+  if (streamInput && storedStream) streamInput.value = storedStream;
+
+  // Auto-connect if both are present
+  if (storedCommunity && storedStream) {
+    connectToChat();
+  }
+});
 
 /**
  * Connect to the chat WebSocket server
@@ -39,6 +60,9 @@ function connectToChat() {
   localStorage.setItem('omnistream_stream_id', streamId);
 
   showStatus('info', 'Connecting to chat server...');
+
+  // Load stream platforms to populate send selector (non-blocking)
+  loadStreamPlatforms(communityId, streamId);
 
   // Connect to WebSocket (assuming backend is on same host)
   const wsUrl = 'ws://localhost:3000/ws/chat';
@@ -79,6 +103,10 @@ function connectToChat() {
 
       case 'messageHighlighted':
         handleMessageHighlight(data.messageId);
+        break;
+
+      case 'messageSent':
+        showStatus('success', 'Message sent!');
         break;
 
       case 'error':
@@ -125,6 +153,11 @@ function disconnectFromChat() {
 function handleChatMessage(message) {
   chatMessages.push(message);
   platformStats[message.platform] = (platformStats[message.platform] || 0) + 1;
+
+  // Ensure filters know about new platforms dynamically
+  if (!(message.platform in platformFilters)) {
+    platformFilters[message.platform] = true;
+  }
 
   addMessageToUI(message);
   updateStats();
@@ -209,9 +242,16 @@ function handleMessageHighlight(messageId) {
  */
 function sendMessage() {
   const input = document.getElementById('message-input');
+  const platformSelect = document.getElementById('send-platform');
   const text = input.value.trim();
 
   if (!text) {
+    return;
+  }
+
+  const platform = platformSelect ? platformSelect.value : '';
+  if (!platform) {
+    showStatus('error', 'Select a platform to send your message.');
     return;
   }
 
@@ -220,10 +260,14 @@ function sendMessage() {
     return;
   }
 
-  // Note: The backend chat-server.ts doesn't have a send message handler yet
-  // This would need to be implemented on the backend to work
-  alert(
-    'Send message feature requires backend implementation. Currently, only Telegram adapter has sendChatMessage() method.'
+  ws.send(
+    JSON.stringify({
+      type: 'sendMessage',
+      text,
+      platform,
+      communityId: document.getElementById('community-id').value.trim(),
+      streamId: document.getElementById('stream-id').value.trim(),
+    })
   );
 
   input.value = '';
@@ -233,8 +277,58 @@ function sendMessage() {
  * Handle Enter key in message input
  */
 function handleMessageKeypress(event) {
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
     sendMessage();
+  }
+}
+
+/**
+ * Populate send platform selector
+ */
+function renderSendPlatforms(platforms) {
+  const select = document.getElementById('send-platform');
+  if (!select) return;
+
+  if (!platforms || platforms.length === 0) {
+    select.innerHTML = '<option value=\"\">No platforms available</option>';
+    return;
+  }
+
+  const options = ['<option value=\"\">Select platform</option>']
+    .concat(
+      platforms.map((p) => {
+        const name = p.charAt(0).toUpperCase() + p.slice(1);
+        return `<option value=\"${p}\">${name}</option>`;
+      })
+    )
+    .join('');
+
+  select.innerHTML = options;
+}
+
+/**
+ * Load stream platforms for send dropdown
+ */
+async function loadStreamPlatforms(communityId, streamId) {
+  try {
+    const res = await fetch(`/api/streams/${streamId}?communityId=${communityId}`);
+    const data = await res.json();
+
+    if (!data.success) {
+      return;
+    }
+
+    const stream = data.data?.stream || data.data;
+    const platformStreams = data.data?.platformStreams || [];
+    const platforms = new Set();
+    (stream?.platforms || []).forEach((p) => platforms.add(p));
+    platformStreams.forEach((ps) => platforms.add(ps.platform));
+
+    sendPlatforms = Array.from(platforms);
+    renderSendPlatforms(sendPlatforms);
+  } catch (error) {
+    console.error('Failed to load stream platforms', error);
   }
 }
 
@@ -382,21 +476,7 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-/**
- * Initialize page
- */
+// Initialize indicator on load (values handled by the first DOMContentLoaded listener)
 document.addEventListener('DOMContentLoaded', () => {
-  // Load saved values from localStorage
-  const savedCommunityId = localStorage.getItem('omnistream_community_id');
-  const savedStreamId = localStorage.getItem('omnistream_stream_id');
-
-  if (savedCommunityId) {
-    document.getElementById('community-id').value = savedCommunityId;
-  }
-
-  if (savedStreamId) {
-    document.getElementById('stream-id').value = savedStreamId;
-  }
-
   updateConnectionIndicator(false);
 });

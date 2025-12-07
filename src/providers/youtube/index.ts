@@ -413,6 +413,59 @@ export class YouTubeProvider implements StreamProvider {
     // This would need to be implemented through Super Chat or other mechanisms
     throw new UnsupportedFeatureError('YouTube', 'message highlighting');
   }
+
+  /**
+   * Send a live chat message to YouTube
+   * YouTube requires the liveChatId (retrieved from the broadcast)
+   */
+  async sendChatMessage(
+    platformStreamId: string,
+    text: string,
+    tokens: OAuthToken
+  ): Promise<{ status: 'success' | 'error' | 'unsupported'; error?: string }> {
+    try {
+      // Look up liveChatId for this broadcast
+      const broadcastResponse = await axios.get(`${this.YOUTUBE_API_BASE}/liveBroadcasts`, {
+        headers: { Authorization: `Bearer ${tokens.accessToken}` },
+        params: {
+          part: 'snippet',
+          id: platformStreamId,
+        },
+      });
+
+      const broadcast = broadcastResponse.data.items?.[0];
+      const liveChatId = broadcast?.snippet?.liveChatId;
+      if (!liveChatId) {
+        const error = 'Live chat is not available for this broadcast yet (no liveChatId).';
+        logger.warn('YouTube sendChatMessage failed: missing liveChatId', {
+          platformStreamId,
+          broadcastStatus: broadcast?.status,
+        });
+        return { status: 'error', error };
+      }
+
+      await axios.post(
+        `${this.YOUTUBE_API_BASE}/liveChat/messages`,
+        {
+          snippet: {
+            liveChatId,
+            type: 'textMessageEvent',
+            textMessageDetails: { messageText: text },
+          },
+        },
+        {
+          headers: { Authorization: `Bearer ${tokens.accessToken}` },
+          params: { part: 'snippet' },
+        }
+      );
+
+      return { status: 'success' };
+    } catch (error) {
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube sendChatMessage failed', { error: reason });
+      return { status: 'error', error: reason };
+    }
+  }
 }
 
 export const youtubeProvider = new YouTubeProvider();

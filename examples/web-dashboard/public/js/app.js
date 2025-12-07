@@ -858,9 +858,9 @@ function renderStreams() {
                             ${isStarting ? '⏳ Starting...' : '▶ Start Stream'}
                         </button>
                     `}
-                    <button onclick="connectToLiveChat('${stream.id}', '${communityId}')" class="btn btn-primary">
-                        💬 View Chat
-                    </button>
+                    <a href="/chat?streamId=${stream.id}&communityId=${communityId}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                        💬 Open Chat
+                    </a>
                     <button id="refresh-btn-${stream.id}" onclick="refreshStream('${stream.id}')" class="btn btn-secondary">
                         🔄 Refresh
                     </button>
@@ -1714,6 +1714,7 @@ let chatWebSocket = null;
 let currentStreamId = null;
 let currentCommunityId = null;
 let chatMessages = [];
+let chatSendPlatforms = [];
 let platformFilters = {
     youtube: true,
     telegram: true,
@@ -1737,6 +1738,15 @@ function connectToLiveChat(streamId, communityId) {
 
     currentStreamId = streamId;
     currentCommunityId = communityId;
+
+    // Determine available platforms for this stream to populate the send dropdown
+    const targetStream = streams.find(s => s.id === streamId);
+    const availablePlatforms = Array.from(new Set([
+        ...(targetStream?.platformStreams || []).map(ps => ps.platform),
+        ...(targetStream?.platforms || [])
+    ])).filter(Boolean);
+    chatSendPlatforms = availablePlatforms;
+    renderChatSendPlatformOptions(availablePlatforms);
 
     // Show chat section
     const chatSection = document.getElementById('live-chat-section');
@@ -1929,10 +1939,17 @@ function renderAllChatMessages() {
  */
 function sendChatMessage() {
     const input = document.getElementById('chat-message-input');
+    const platformSelect = document.getElementById('chat-send-platform');
     if (!input) return;
 
     const text = input.value.trim();
     if (!text) return;
+
+    const platform = platformSelect ? platformSelect.value : '';
+    if (!platform) {
+        alert('Select a platform to send your message.');
+        return;
+    }
 
     if (!chatWebSocket || chatWebSocket.readyState !== WebSocket.OPEN) {
         alert('Not connected to chat server');
@@ -1943,10 +1960,29 @@ function sendChatMessage() {
         type: 'sendMessage',
         text: text,
         streamId: currentStreamId,
-        communityId: currentCommunityId
+        communityId: currentCommunityId,
+        platform
     }));
 
     input.value = '';
+}
+
+/**
+ * Render platform options for sending chat messages
+ */
+function renderChatSendPlatformOptions(platforms) {
+    const select = document.getElementById('chat-send-platform');
+    if (!select) return;
+
+    if (!platforms || platforms.length === 0) {
+        select.innerHTML = '<option value=\"\">No platforms available</option>';
+        return;
+    }
+
+    select.innerHTML = '<option value=\"\">Select platform</option>' + platforms.map(p => {
+        const name = p.charAt(0).toUpperCase() + p.slice(1);
+        return `<option value=\"${p}\">${name}</option>`;
+    }).join('');
 }
 
 /**

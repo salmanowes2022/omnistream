@@ -209,6 +209,19 @@ export interface StreamProvider {
     messageId: string,
     tokens: OAuthToken
   ): Promise<boolean>;
+
+  /**
+   * Send a chat message to the live stream (if supported by platform)
+   * @param platformStreamId - Platform-specific stream ID or live chat ID
+   * @param text - Message body
+   * @param tokens - OAuth tokens for the platform
+   * @returns Status of the send
+   */
+  sendChatMessage(
+    platformStreamId: string,
+    text: string,
+    tokens: OAuthToken
+  ): Promise<{ status: 'success' | 'error' | 'unsupported'; error?: string }>;
 }
 
 /**

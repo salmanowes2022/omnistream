@@ -291,11 +291,75 @@ export class ChatServer {
     }
 
     try {
+      const { platform } = message;
+      if (!platform || typeof platform !== 'string') {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: 'Platform is required',
+          })
+        );
+        return;
+      }
+
+      const platformType = platform as Platform;
+      if (!Object.values(Platform).includes(platformType)) {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: 'Unsupported platform for chat message',
+          })
+        );
+        return;
+      }
+
+      // Ensure the platform is configured for this stream
+      const platformStreams = await db.getPlatformStreams(client.streamId);
+      const platformStream = platformStreams.find((ps) => ps.platform === platformType);
+      if (!platformStream) {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: 'Platform not configured for this stream',
+          })
+        );
+        return;
+      }
+
+      const provider = providerRegistry.getProvider(platformType);
+      const tokens = await db.getOAuthTokens(client.communityId, platformType);
+
+      const sendResult = await provider.sendChatMessage(
+        platformStream.platformStreamId,
+        text,
+        tokens.tokens
+      );
+
+      if (sendResult.status === 'unsupported') {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: 'Sending chat messages is not supported for this platform yet',
+          })
+        );
+        return;
+      }
+
+      if (sendResult.status === 'error') {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: sendResult.error || 'Failed to send message',
+          })
+        );
+        return;
+      }
+
       // Create a chat message object to save and broadcast
       const chatMessage: ChatMessage = {
         id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         streamId: client.streamId,
-        platform: Platform.TELEGRAM, // Assume Telegram for now
+        platform: platformType,
         authorId: 'system',
         authorName: 'You',
         message: text,
@@ -320,7 +384,11 @@ export class ChatServer {
         })
       );
 
-      logger.info('Message sent', { streamId: client.streamId, text });
+      logger.info('Message sent', {
+        streamId: client.streamId,
+        platform: platformType,
+        text,
+      });
     } catch (error) {
       logger.error('Send message error', error);
       ws.send(

@@ -23,6 +23,14 @@ app.get('/', (req, res) => {
   });
 });
 
+app.get('/chat', (req, res) => {
+  res.render('chat', {
+    omnistreamUrl: OMNISTREAM_API_URL,
+    communityId: req.query.communityId || '',
+    streamId: req.query.streamId || '',
+  });
+});
+
 // API proxy endpoints to avoid CORS issues
 
 // Create a new community (registration)

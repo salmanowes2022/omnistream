@@ -98,6 +98,13 @@ export class TikTokProvider implements StreamProvider {
   ): Promise<boolean> {
     throw new UnsupportedFeatureError('TikTok', 'message highlighting');
   }
+
+  async sendChatMessage(): Promise<{
+    status: 'success' | 'error' | 'unsupported';
+    error?: string;
+  }> {
+    return { status: 'unsupported', error: 'TikTok chat replies are not supported.' };
+  }
 }
 
 export const tiktokProvider = new TikTokProvider();

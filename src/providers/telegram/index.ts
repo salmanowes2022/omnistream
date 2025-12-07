@@ -88,6 +88,13 @@ export class TelegramProvider implements StreamProvider {
   ): Promise<boolean> {
     throw new UnsupportedFeatureError('Telegram', 'message highlighting');
   }
+
+  async sendChatMessage(): Promise<{
+    status: 'success' | 'error' | 'unsupported';
+    error?: string;
+  }> {
+    return { status: 'unsupported', error: 'Telegram chat replies are not supported yet.' };
+  }
 }
 
 export const telegramProvider = new TelegramProvider();

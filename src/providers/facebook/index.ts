@@ -349,6 +349,13 @@ export class FacebookProvider implements StreamProvider {
     // Facebook doesn't have a native comment highlight feature via API
     throw new UnsupportedFeatureError('Facebook', 'message highlighting');
   }
+
+  async sendChatMessage(): Promise<{
+    status: 'success' | 'error' | 'unsupported';
+    error?: string;
+  }> {
+    return { status: 'unsupported', error: 'Facebook comment replies are not supported yet.' };
+  }
 }
 
 export const facebookProvider = new FacebookProvider();

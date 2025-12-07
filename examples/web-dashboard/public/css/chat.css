@@ -341,11 +341,9 @@
 
 /* Send Message Panel */
 .send-message-panel {
-  margin-top: 20px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border-top: 1px solid #eee;
   padding: 15px;
+  background: #fafafa;
 }
 
 .send-message-panel h4 {
@@ -355,19 +353,32 @@
 }
 
 .message-input-group {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(190px, 240px) 1fr 120px;
   gap: 10px;
+  align-items: stretch;
 }
 
-.message-input-group input {
-  flex: 1;
+.message-input-group select {
+  min-width: 200px;
+  height: 100%;
+}
+
+.message-input-group textarea {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 1em;
+  min-height: 96px;
+  resize: vertical;
 }
 
-.message-input-group input:focus {
+.message-input-group button {
+  height: 100%;
+  align-self: stretch;
+}
+
+.message-input-group textarea:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
@@ -453,7 +464,7 @@
   }
 
   .message-input-group {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .sidebar-section {
