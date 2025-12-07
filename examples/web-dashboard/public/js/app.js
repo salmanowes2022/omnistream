@@ -567,12 +567,12 @@ function renderPlatformCheckboxes() {
 
     const token = localStorage.getItem('omnistream_jwt_token');
     if (!token) {
-        container.innerHTML = '<p class="info-text" style="color: #666; text-align: center; padding: 20px;">Please login to connect platforms and create streams.</p>';
+        container.innerHTML = '<p class="info-text">Please login to connect platforms and create streams.</p>';
         return;
     }
 
     // Show loading state
-    container.innerHTML = '<p class="info-text" style="color: #666; text-align: center; padding: 20px;">Loading your connected platforms...</p>';
+    container.innerHTML = '<p class="info-text">Loading your connected platforms...</p>';
 
     // Platform icons for better UI
     const platformIcons = {
@@ -598,40 +598,26 @@ function renderPlatformCheckboxes() {
                 const icon = platformIcons[p.platform.toLowerCase()] || '📡';
 
                 return `
-                    <label class="platform-checkbox-label" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
-                        padding: 12px 16px;
-                        margin-bottom: 8px;
-                        border: 2px solid #e0e0e0;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        transition: all 0.2s;
-                        background: white;
-                    " onmouseover="this.style.borderColor='var(--primary-color)'; this.style.background='#f8f9ff';"
-                       onmouseout="this.style.borderColor='#e0e0e0'; this.style.background='white';">
-                        <input type="checkbox" class="platform-checkbox" name="platforms" value="${p.platform}" checked
-                               style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="font-size: 20px;">${icon}</span>
-                        <span style="font-weight: 500; color: #333;">${platformName}</span>
-                        <small style="margin-left: auto; color: #4CAF50; font-size: 12px;">✓ Connected</small>
+                    <label class="platform-checkbox-label">
+                        <input type="checkbox" class="platform-checkbox" name="platforms" value="${p.platform}" checked>
+                        <span>${icon} ${platformName}</span>
+                        <small style="margin-left: auto;">✓ Connected</small>
                     </label>
                 `;
             }).join('');
         } else {
             container.innerHTML = `
-                <p class="info-text" style="color: #666; text-align: center; padding: 20px; background: #f9f9f9; border-radius: 8px;">
-                    📱 No platforms connected yet.<br><br>
-                    <span style="font-size: 14px;">Please connect at least one platform in the <strong>"Connect Social Platforms"</strong> section above to create streams.</span>
-                </p>
+                <div class="empty-state">
+                    <p>📱 No platforms connected yet.</p>
+                    <p class="info-text">Please connect at least one platform in the <strong>"Connect Social Platforms"</strong> section above to create streams.</p>
+                </div>
             `;
         }
     })
     .catch(err => {
         console.error('Failed to load platforms:', err);
         container.innerHTML = `
-            <p class="info-text" style="color: #f44336; text-align: center; padding: 20px;">
+            <p class="info-text" style="color: var(--danger);">
                 ⚠️ Failed to load platforms. Please refresh the page.
             </p>
         `;
@@ -823,7 +809,7 @@ function renderStreams() {
                 ${stream.rtmpUrl || stream.ingestUrl ? `
                     <div class="stream-ingest">
                         <h4>🎬 OBS Ingest Settings (Stream to Omnistream):</h4>
-                        <div style="margin-bottom: 10px;">
+                        <div class="mb-2">
                             <strong>Server:</strong>
                             <code>${escapeHtml(stream.rtmpUrl || stream.ingestUrl)}</code>
                         </div>
@@ -837,22 +823,22 @@ function renderStreams() {
                 ` : ''}
 
                 ${platformStreams.length > 0 && platformStreams.some(ps => ps.rtmpUrl) ? `
-                    <div class="stream-ingest" style="background: rgba(79, 70, 229, 0.1); border-color: var(--primary-color);">
+                    <div class="stream-ingest">
                         <h4>📺 YouTube RTMP Settings (Direct to YouTube):</h4>
                         ${platformStreams.filter(ps => ps.rtmpUrl).map(ps => `
-                            <div style="margin-bottom: 10px;">
+                            <div class="mb-2">
                                 <strong>Platform:</strong> <span style="text-transform: capitalize;">${ps.platform}</span><br>
                                 <strong>Server:</strong>
-                                <code style="font-size: 0.75em;">${escapeHtml(ps.rtmpUrl)}</code>
+                                <code>${escapeHtml(ps.rtmpUrl)}</code>
                             </div>
                             ${ps.streamKey ? `
                                 <div>
                                     <strong>Stream Key:</strong>
-                                    <code style="font-size: 0.75em;">${escapeHtml(ps.streamKey)}</code>
+                                    <code>${escapeHtml(ps.streamKey)}</code>
                                 </div>
                             ` : ''}
                         `).join('')}
-                        <p style="margin-top: 10px; font-size: 0.85em; color: var(--text-secondary);">
+                        <p class="info-text mt-4">
                             💡 For testing: You can stream directly to YouTube using these settings
                         </p>
                     </div>
