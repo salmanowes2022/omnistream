@@ -10,6 +10,8 @@ export interface ScheduleRequest {
   title?: string;
   description?: string;
   scheduledAt: string;
+  content?: string;
+  mediaUrl?: string;
 }
 
 export interface ScheduleResponse {

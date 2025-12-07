@@ -217,6 +217,7 @@ export class UserService {
     accessToken: string;
     refreshToken: string | null;
     expiresAt: Date | null;
+    extra: Record<string, unknown> | null;
   } | null> {
     const socialAccount = await prisma.socialAccount.findUnique({
       where: {
@@ -237,10 +238,16 @@ export class UserService {
       ? decryptToken(socialAccount.refreshToken)
       : null;
 
+    // Parse extra field
+    const extra = socialAccount.extra
+      ? (JSON.parse(socialAccount.extra) as Record<string, unknown>)
+      : null;
+
     return {
       accessToken,
       refreshToken,
       expiresAt: socialAccount.expiresAt,
+      extra,
     };
   }
 

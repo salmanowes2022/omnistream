@@ -25,7 +25,8 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
       throw new ValidationError('User ID not found in token');
     }
 
-    const { platforms, type, title, description, scheduledAt } = req.body as ScheduleRequest;
+    const { platforms, type, title, description, scheduledAt, content, mediaUrl } =
+      req.body as ScheduleRequest;
 
     // Validate input
     if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
@@ -38,6 +39,11 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
 
     if (!scheduledAt) {
       throw new ValidationError('scheduledAt is required');
+    }
+
+    // For posts, require content
+    if (type === 'post' && !content && !description) {
+      throw new ValidationError('Content or description is required for posts');
     }
 
     // Parse and validate scheduledAt date
@@ -71,6 +77,8 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
         payload: JSON.stringify({
           title,
           description,
+          content: content || description, // Use content if provided, otherwise use description
+          mediaUrl: mediaUrl || undefined,
           results: {},
         }),
         status: 'pending',

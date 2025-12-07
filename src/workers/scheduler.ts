@@ -1,11 +1,22 @@
 /**
  * Background Scheduler Worker
  * Processes scheduled jobs at their scheduled time
+ *
+ * Supports:
+ * - YouTube: Stream scheduling (native API support)
+ * - Facebook: Post and stream scheduling (native API support)
+ * - Instagram: Posts (via external scheduler)
+ * - Twitter: Posts (via external scheduler)
+ * - Telegram: Posts and messages (via external scheduler)
  */
 
 import { prisma } from '../database/prisma-client.js';
 import { userService } from '../core/services/user-service.js';
 import { youtubeAdapter } from '../platforms/youtube/adapter.js';
+import { facebookAdapter } from '../platforms/facebook/adapter.js';
+import { instagramAdapter } from '../platforms/instagram/adapter.js';
+import { twitterAdapter } from '../platforms/twitter/adapter.js';
+import { telegramAdapter } from '../platforms/telegram/adapter.js';
 import { Platform } from '../core/interfaces.js';
 import { logger } from '../utils/logger.js';
 
@@ -13,9 +24,218 @@ const WORKER_INTERVAL = 30000; // 30 seconds
 let isProcessing = false;
 
 interface ScheduleEventResult {
-  status: 'scheduled' | 'failed' | 'unsupported';
+  status: 'scheduled' | 'posted' | 'failed' | 'unsupported';
   broadcastId?: string;
+  postId?: string;
+  postUrl?: string;
   error?: string;
+}
+
+/**
+ * Process a scheduled POST job
+ */
+async function processPostJob(
+  platform: Platform,
+  job: {
+    userId: string;
+    title: string | null;
+    description: string | null;
+    payload: string;
+  }
+): Promise<ScheduleEventResult> {
+  try {
+    // Get user's tokens for this platform
+    const tokens = await userService.getPlatformTokens(job.userId, platform);
+
+    if (!tokens) {
+      return {
+        status: 'failed',
+        error: `Platform ${platform} is not connected`,
+      };
+    }
+
+    const payload = JSON.parse(job.payload) as {
+      content?: string;
+      mediaUrl?: string;
+    };
+
+    const content = payload.content || job.description || job.title || 'Untitled Post';
+    const mediaUrl = payload.mediaUrl;
+
+    // Execute the post based on platform
+    switch (platform) {
+      case Platform.YOUTUBE: {
+        // YouTube doesn't support community posts
+        const result = await youtubeAdapter.post({
+          content,
+          mediaUrl,
+          credentials: {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken || undefined,
+            extra: tokens.extra || undefined,
+          },
+        });
+        return result as ScheduleEventResult;
+      }
+
+      case Platform.FACEBOOK: {
+        // Facebook supports native scheduling, but since we're already at the scheduled time,
+        // we should post immediately
+        const result = await facebookAdapter.post({
+          content,
+          mediaUrl,
+          credentials: {
+            accessToken: tokens.accessToken,
+            extra: tokens.extra || undefined,
+          },
+        });
+        return result as ScheduleEventResult;
+      }
+
+      case Platform.INSTAGRAM: {
+        const result = await instagramAdapter.post({
+          content,
+          mediaUrl,
+          credentials: {
+            accessToken: tokens.accessToken,
+            extra: tokens.extra || undefined,
+          },
+        });
+        return result as ScheduleEventResult;
+      }
+
+      case Platform.TWITTER: {
+        const result = await twitterAdapter.post({
+          content,
+          mediaUrl,
+          credentials: {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken || undefined,
+            extra: tokens.extra || undefined,
+          },
+        });
+        return result as ScheduleEventResult;
+      }
+
+      case Platform.TELEGRAM: {
+        const result = await telegramAdapter.post({
+          content,
+          mediaUrl,
+          credentials: {
+            accessToken: tokens.accessToken,
+            extra: tokens.extra || undefined,
+          },
+        });
+        return result as ScheduleEventResult;
+      }
+
+      default:
+        return {
+          status: 'unsupported',
+          error: `Platform ${platform as string} is not supported for posting`,
+        };
+    }
+  } catch (error) {
+    logger.error('Error processing scheduled post', { platform, error });
+    return {
+      status: 'failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Process a scheduled STREAM job
+ */
+async function processStreamJob(
+  platform: Platform,
+  job: {
+    userId: string;
+    title: string;
+    description: string | null;
+    scheduledAt: Date;
+    payload: string;
+  }
+): Promise<ScheduleEventResult> {
+  try {
+    // Get user's tokens for this platform
+    const tokens = await userService.getPlatformTokens(job.userId, platform);
+
+    if (!tokens) {
+      return {
+        status: 'failed',
+        error: `Platform ${platform} is not connected`,
+      };
+    }
+
+    const payload = JSON.parse(job.payload) as {
+      streamId?: string;
+    };
+
+    // Execute stream scheduling based on platform
+    switch (platform) {
+      case Platform.YOUTUBE: {
+        // YouTube supports native scheduled broadcasts
+        const result = await youtubeAdapter.scheduleEvent({
+          title: job.title,
+          description: job.description || '',
+          scheduledAt: job.scheduledAt,
+          credentials: {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken || undefined,
+          },
+        });
+        return result as ScheduleEventResult;
+      }
+
+      case Platform.FACEBOOK: {
+        // Facebook supports scheduled live videos
+        // However, we'll create the stream immediately and user will start it at scheduled time
+        // This is because Facebook's scheduled_publish_time doesn't work for live videos
+
+        // If there's a streamId in payload, we can update it
+        // Otherwise, we need to create a new stream via streamService
+        if (payload.streamId) {
+          logger.info('Facebook scheduled stream - stream already created', {
+            streamId: payload.streamId,
+          });
+          return {
+            status: 'scheduled',
+            broadcastId: payload.streamId,
+          };
+        } else {
+          // Create stream immediately (user will start it at scheduled time)
+          logger.warn('Facebook scheduled streams should be created via /streams endpoint first');
+          return {
+            status: 'failed',
+            error:
+              'Facebook scheduled streams require creating the stream first via /api/v1/streams',
+          };
+        }
+      }
+
+      case Platform.INSTAGRAM:
+      case Platform.TWITTER:
+      case Platform.TELEGRAM:
+      case Platform.TIKTOK:
+        return {
+          status: 'unsupported',
+          error: `${platform} does not support live streaming`,
+        };
+
+      default:
+        return {
+          status: 'unsupported',
+          error: `Platform ${platform as string} is not supported for streaming`,
+        };
+    }
+  } catch (error) {
+    logger.error('Error processing scheduled stream', { platform, error });
+    return {
+      status: 'failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }
 
 /**
@@ -43,64 +263,40 @@ async function processJob(jobId: string): Promise<void> {
     const payload = JSON.parse(job.payload) as {
       title?: string;
       description?: string;
+      content?: string;
+      mediaUrl?: string;
       results?: Record<string, ScheduleEventResult>;
     };
 
     const results: Record<string, ScheduleEventResult> = {};
 
+    logger.info('Processing scheduled job', {
+      jobId,
+      type: job.type,
+      platforms,
+      scheduledAt: job.scheduledAt,
+    });
+
     // Process each platform
     for (const platform of platforms) {
       try {
-        // Get user's tokens for this platform
-        const tokens = await userService.getPlatformTokens(job.userId, platform);
-
-        if (!tokens) {
+        if (job.type === 'post') {
+          // Process scheduled post
+          results[platform] = await processPostJob(platform, job);
+        } else if (job.type === 'stream') {
+          // Process scheduled stream
+          results[platform] = await processStreamJob(platform, {
+            userId: job.userId,
+            title: job.title || 'Untitled Stream',
+            description: job.description,
+            scheduledAt: job.scheduledAt,
+            payload: job.payload,
+          });
+        } else {
           results[platform] = {
             status: 'failed',
-            error: `Platform ${platform} is not connected`,
+            error: `Unknown job type: ${job.type}`,
           };
-          continue;
-        }
-
-        // Call appropriate scheduler method based on platform
-        switch (platform) {
-          case Platform.YOUTUBE: {
-            if (job.type !== 'stream') {
-              results[platform] = {
-                status: 'unsupported',
-                error: 'YouTube only supports stream scheduling',
-              };
-              break;
-            }
-
-            const result = await youtubeAdapter.scheduleEvent({
-              title: job.title || 'Scheduled Stream',
-              description: job.description || '',
-              scheduledAt: job.scheduledAt,
-              credentials: {
-                accessToken: tokens.accessToken,
-                refreshToken: tokens.refreshToken || undefined,
-              },
-            });
-
-            results[platform] = result as ScheduleEventResult;
-            break;
-          }
-
-          case Platform.TWITTER:
-          case Platform.TELEGRAM:
-            // Twitter and Telegram don't support scheduling yet
-            results[platform] = {
-              status: 'unsupported',
-              error: `${platform} scheduling is not yet supported`,
-            };
-            break;
-
-          default:
-            results[platform] = {
-              status: 'unsupported',
-              error: `Platform ${platform} is not supported for scheduling`,
-            };
         }
       } catch (error) {
         logger.error('Error processing platform', { platform, error });
@@ -112,7 +308,9 @@ async function processJob(jobId: string): Promise<void> {
     }
 
     // Determine overall status
-    const hasSucceeded = Object.values(results).some((r) => r.status === 'scheduled');
+    const hasSucceeded = Object.values(results).some(
+      (r) => r.status === 'scheduled' || r.status === 'posted'
+    );
     const hasFailed = Object.values(results).some((r) => r.status === 'failed');
     const finalStatus = hasSucceeded && !hasFailed ? 'done' : hasFailed ? 'failed' : 'done';
 
@@ -124,13 +322,16 @@ async function processJob(jobId: string): Promise<void> {
         payload: JSON.stringify({
           ...payload,
           results,
+          executedAt: new Date().toISOString(),
         }),
       },
     });
 
-    logger.info('Job processed successfully', { jobId, status: finalStatus });
+    logger.info('Job processed successfully', { jobId, status: finalStatus, results });
   } catch (error) {
-    logger.error('Job processing failed', { jobId, error });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.error('Job processing failed', { jobId, error: errorMessage, stack: errorStack });
 
     // Mark job as failed
     try {
