@@ -221,6 +221,27 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- TikTok Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #000000;">🎵</div>
+                            <div class="platform-details">
+                                <h3>TikTok Live</h3>
+                                <p class="platform-description">Connect TikTok Live RTMP streaming (streaming only)</p>
+                                <div id="user-tiktok-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-tiktok-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-tiktok" class="btn btn-primary" onclick="window.userPlatforms.connectUserTikTok()">
+                                    Connect TikTok
+                                </button>
+                                <button id="user-disconnect-tiktok" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('tiktok')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -570,6 +591,52 @@
                         Cancel
                     </button>
                     <button class="btn btn-primary" onclick="window.userPlatforms.submitUserTelegramConnection()">
+                        Connect
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TikTok RTMP Connection Modal -->
+    <div id="user-tiktok-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Connect TikTok Live RTMP</h3>
+                <button class="modal-close" onclick="window.userPlatforms.closeUserTikTokModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2">
+                    TikTok Live uses RTMP streaming. Get your stream key from the TikTok Live app.
+                </p>
+                <ol class="instruction-list">
+                    <li>Open TikTok app and go to Live settings</li>
+                    <li>Enable "Go Live" and select "Game" or "Screen Share" mode</li>
+                    <li>Copy your Server URL and Stream Key</li>
+                    <li>Paste them below to connect</li>
+                </ol>
+
+                <div class="form-group">
+                    <label class="form-label" for="user-tiktok-rtmp-server">RTMP Server URL</label>
+                    <input type="text" id="user-tiktok-rtmp-server" placeholder="rtmp://push.tiktok.com/live" value="rtmp://push.tiktok.com/live" required>
+                    <small class="text-muted">Default: rtmp://push.tiktok.com/live (check TikTok app for updates)</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="user-tiktok-stream-key">Stream Key</label>
+                    <input type="password" id="user-tiktok-stream-key" placeholder="Your TikTok stream key" required>
+                    <small class="text-muted">Get this from TikTok Live app settings</small>
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>Note:</strong> TikTok Live supports RTMP streaming only. Posting and scheduling are not available.
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="window.userPlatforms.closeUserTikTokModal()">
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary" onclick="window.userPlatforms.submitUserTikTokConnection()">
                         Connect
                     </button>
                 </div>

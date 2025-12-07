@@ -11,6 +11,7 @@ import { telegramAdapter } from '../../platforms/telegram/adapter.js';
 import { youtubeAdapter } from '../../platforms/youtube/adapter.js';
 import { facebookAdapter } from '../../platforms/facebook/adapter.js';
 import { instagramAdapter } from '../../platforms/instagram/adapter.js';
+import { tiktokAdapter } from '../../platforms/tiktok/adapter.js';
 import { logger } from '../../utils/logger.js';
 import type { PlatformPostResult, PostData } from '../../types/post.js';
 
@@ -42,6 +43,12 @@ export interface ConnectInstagramRequest {
   userId: string;
   code: string;
   state: string;
+}
+
+export interface ConnectTikTokRequest {
+  userId: string;
+  rtmpServer: string;
+  streamKey: string;
 }
 
 export interface PlatformConnectionInfo {
@@ -261,6 +268,39 @@ export class PlatformService {
   }
 
   /**
+   * Connect TikTok with manual RTMP credentials
+   */
+  async connectTikTok(request: ConnectTikTokRequest): Promise<void> {
+    try {
+      const { userId, rtmpServer, streamKey } = request;
+
+      // Validate and connect TikTok
+      const connectionData = await tiktokAdapter.connect(rtmpServer, streamKey);
+
+      // Save to database via userService
+      // Store streamKey as accessToken (encrypted), no refresh token for TikTok
+      await userService.connectPlatform({
+        userId,
+        platform: Platform.TIKTOK,
+        accessToken: connectionData.streamKey, // Encrypted in database
+        refreshToken: undefined,
+        expiresAt: undefined, // RTMP credentials don't expire
+        extra: {
+          rtmpServer: connectionData.rtmpServer,
+        },
+      });
+
+      logger.info('TikTok connected successfully', {
+        userId,
+        rtmpServer: connectionData.rtmpServer,
+      });
+    } catch (error) {
+      logger.error('TikTok connection failed', error);
+      throw error;
+    }
+  }
+
+  /**
    * Disconnect a platform
    */
   async disconnectPlatform(userId: string, platform: Platform): Promise<void> {
@@ -286,8 +326,14 @@ export class PlatformService {
           case Platform.INSTAGRAM:
             await instagramAdapter.disconnect(tokens.accessToken);
             break;
-          default:
-            logger.warn(`Disconnect not implemented for platform: ${platform}`);
+          case Platform.TIKTOK:
+            await tiktokAdapter.disconnect();
+            break;
+          default: {
+            const exhaustiveCheck: never = platform;
+            logger.warn(`Disconnect not implemented for platform: ${String(exhaustiveCheck)}`);
+            break;
+          }
         }
       }
 
@@ -430,6 +476,15 @@ export class PlatformService {
           const igBusinessId = (igAccount?.extra as { igBusinessId?: string })?.igBusinessId || '';
           return await instagramAdapter.validateConnection(tokens.accessToken, igBusinessId);
         }
+        case Platform.TIKTOK: {
+          // Get extra data for RTMP server
+          const socialAccounts = await userService.getConnectedPlatforms(userId);
+          const tiktokAccount = socialAccounts.find(
+            (acc) => (acc.platform as Platform) === platform
+          );
+          const rtmpServer = (tiktokAccount?.extra as { rtmpServer?: string })?.rtmpServer || '';
+          return await tiktokAdapter.validateConnection(rtmpServer, tokens.accessToken);
+        }
         default:
           return false;
       }
@@ -539,11 +594,27 @@ export class PlatformService {
           };
         }
 
-        default:
+        case Platform.TIKTOK: {
+          const result = await tiktokAdapter.post({
+            content: postData.content,
+            mediaUrl: postData.mediaUrl,
+            credentials,
+          });
+          return {
+            status: result.status as 'posted' | 'failed' | 'unsupported',
+            postUrl: result.postUrl,
+            postId: result.postId,
+            error: result.error,
+          };
+        }
+
+        default: {
+          const exhaustiveCheck: never = platform;
           return {
             status: 'unsupported',
-            error: `Platform ${platform} is not supported for posting`,
+            error: `Platform ${String(exhaustiveCheck)} is not supported for posting`,
           };
+        }
       }
     } catch (error) {
       logger.error('Failed to post to platform', { platform, error });

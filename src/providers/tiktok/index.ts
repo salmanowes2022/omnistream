@@ -1,6 +1,7 @@
 /**
  * TikTok streaming provider stub
- * TikTok LIVE Access API requires special approval and is not generally available
+ * TikTok uses RTMP streaming only - no OAuth support
+ * Users manually provide RTMP server URL and stream key from TikTok Live app
  */
 
 import {
@@ -12,26 +13,18 @@ import {
   StreamProvider,
 } from '../../core/interfaces.js';
 import { UnsupportedFeatureError } from '../../core/errors.js';
-import { config } from '../../utils/config.js';
 import { logger } from '../../utils/logger.js';
 
 export class TikTokProvider implements StreamProvider {
   readonly platform = Platform.TIKTOK;
 
-  private readonly TIKTOK_AUTH_URL = 'https://www.tiktok.com/v2/auth/authorize';
-
-  getAuthUrl(communityId: string, redirectUri: string): string {
-    // Generate auth URL but note that LIVE Access API requires approval
-    const params = new URLSearchParams({
-      client_key: config.tiktok.clientKey,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'user.info.basic,video.list,live.room.info',
-      state: communityId,
-    });
-
-    logger.warn('TikTok LIVE Access API requires approval', { communityId });
-    return `${this.TIKTOK_AUTH_URL}?${params.toString()}`;
+  getAuthUrl(_communityId: string, _redirectUri: string): string {
+    // TikTok does not support OAuth - users manually enter RTMP credentials
+    logger.warn('TikTok does not support OAuth. Users must manually enter RTMP credentials.');
+    throw new UnsupportedFeatureError(
+      'TikTok',
+      'OAuth is not supported. TikTok uses manual RTMP credentials only.'
+    );
   }
 
   async exchangeCodeForTokens(_code: string, _redirectUri: string): Promise<OAuthToken> {

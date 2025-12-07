@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const communityInput = document.getElementById('community-id');
   const streamInput = document.getElementById('stream-id');
 
-  const storedCommunity = params.get('communityId') || localStorage.getItem('omnistream_community_id');
+  const storedCommunity =
+    params.get('communityId') || localStorage.getItem('omnistream_community_id');
   const storedStream = params.get('streamId') || localStorage.getItem('omnistream_stream_id');
 
   if (communityInput && storedCommunity) communityInput.value = storedCommunity;
@@ -69,7 +70,6 @@ function connectToChat() {
   ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
-    console.log('WebSocket connected');
     showStatus('success', 'Connected! Subscribing to stream...');
 
     // Subscribe to the stream
@@ -84,7 +84,6 @@ function connectToChat() {
 
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    console.log('WebSocket message:', data);
 
     switch (data.type) {
       case 'connected':
@@ -120,7 +119,7 @@ function connectToChat() {
         break;
 
       default:
-        console.log('Unknown message type:', data.type);
+        break;
     }
   };
 
@@ -131,7 +130,6 @@ function connectToChat() {
   };
 
   ws.onclose = () => {
-    console.log('WebSocket closed');
     showStatus('warning', 'Disconnected from chat server');
     updateConnectionIndicator(false);
     ws = null;
@@ -416,7 +414,8 @@ function exportChat() {
 function updateStats() {
   // Update total count
   const totalMessages = chatMessages.length;
-  document.getElementById('message-count').textContent = `${totalMessages} message${totalMessages !== 1 ? 's' : ''}`;
+  document.getElementById('message-count').textContent =
+    `${totalMessages} message${totalMessages !== 1 ? 's' : ''}`;
 
   // Update platform stats
   Object.keys(platformStats).forEach((platform) => {

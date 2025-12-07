@@ -39,8 +39,9 @@ router.get('/:platform/authorize', async (req: Request, res: Response, next: Nex
         redirectUri = config.facebook.redirectUri;
         break;
       case Platform.TIKTOK:
-        redirectUri = config.tiktok.redirectUri;
-        break;
+        throw new ValidationError(
+          'TikTok does not support OAuth. Use manual RTMP credentials instead.'
+        );
       default:
         throw new ValidationError(`Unsupported platform: ${platform}`);
     }
@@ -92,8 +93,9 @@ router.get('/:platform/callback', async (req: Request, res: Response, next: Next
         redirectUri = config.facebook.redirectUri;
         break;
       case Platform.TIKTOK:
-        redirectUri = config.tiktok.redirectUri;
-        break;
+        throw new ValidationError(
+          'TikTok does not support OAuth. Use manual RTMP credentials instead.'
+        );
       default:
         throw new ValidationError(`Unsupported platform: ${platform}`);
     }

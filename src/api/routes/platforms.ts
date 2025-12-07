@@ -176,6 +176,48 @@ router.post(
 );
 
 /**
+ * POST /api/v1/platforms/tiktok/connect
+ * Connect TikTok with manual RTMP credentials
+ */
+router.post(
+  '/tiktok/connect',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.userId;
+
+      if (!userId) {
+        throw new ValidationError('User ID not found in token');
+      }
+
+      const { rtmpServer, streamKey } = req.body;
+
+      if (!rtmpServer || !streamKey) {
+        throw new ValidationError('RTMP server and stream key are required');
+      }
+
+      // Connect TikTok
+      await platformService.connectTikTok({
+        userId,
+        rtmpServer,
+        streamKey,
+      });
+
+      res.json({
+        success: true,
+        data: {
+          message: 'TikTok connected successfully',
+          platform: Platform.TIKTOK,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * POST /api/v1/platforms/youtube/connect
  * Initiate YouTube OAuth flow
  */

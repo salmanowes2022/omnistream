@@ -22,7 +22,7 @@ async function userPlatformRequest(url, options = {}) {
 
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
     ...options.headers,
   };
 
@@ -49,11 +49,30 @@ async function loadUserPlatforms() {
     const platforms = response.data.platforms;
 
     // Update UI for each platform
-    updateUserPlatformStatus('youtube', platforms.find(p => p.platform === 'youtube'));
-    updateUserPlatformStatus('twitter', platforms.find(p => p.platform === 'twitter'));
-    updateUserPlatformStatus('telegram', platforms.find(p => p.platform === 'telegram'));
-    updateUserPlatformStatus('facebook', platforms.find(p => p.platform === 'facebook'));
-    updateUserPlatformStatus('instagram', platforms.find(p => p.platform === 'instagram'));
+    updateUserPlatformStatus(
+      'youtube',
+      platforms.find((p) => p.platform === 'youtube')
+    );
+    updateUserPlatformStatus(
+      'twitter',
+      platforms.find((p) => p.platform === 'twitter')
+    );
+    updateUserPlatformStatus(
+      'telegram',
+      platforms.find((p) => p.platform === 'telegram')
+    );
+    updateUserPlatformStatus(
+      'facebook',
+      platforms.find((p) => p.platform === 'facebook')
+    );
+    updateUserPlatformStatus(
+      'instagram',
+      platforms.find((p) => p.platform === 'instagram')
+    );
+    updateUserPlatformStatus(
+      'tiktok',
+      platforms.find((p) => p.platform === 'tiktok')
+    );
 
     return platforms;
   } catch (error) {
@@ -96,6 +115,8 @@ function updateUserPlatformStatus(platform, data) {
         infoText = `${data.extra.name || 'Unknown'}`;
       } else if (platform === 'instagram') {
         infoText = `@${data.extra.username || 'Unknown'}`;
+      } else if (platform === 'tiktok') {
+        infoText = `RTMP: ${data.extra.rtmpServer || 'Unknown'}`;
       }
 
       infoEl.textContent = infoText;
@@ -128,11 +149,7 @@ async function connectUserTwitter() {
     const authUrl = response.data.authUrl;
 
     // Open OAuth popup
-    const popup = window.open(
-      authUrl,
-      'Twitter OAuth',
-      'width=600,height=700,scrollbars=yes'
-    );
+    const popup = window.open(authUrl, 'Twitter OAuth', 'width=600,height=700,scrollbars=yes');
 
     // Listen for OAuth success message
     window.addEventListener('message', function handler(event) {
@@ -221,11 +238,7 @@ async function connectUserYouTube() {
     const authUrl = response.data.authUrl;
 
     // Open OAuth popup
-    const popup = window.open(
-      authUrl,
-      'YouTube OAuth',
-      'width=600,height=700,scrollbars=yes'
-    );
+    const popup = window.open(authUrl, 'YouTube OAuth', 'width=600,height=700,scrollbars=yes');
 
     // Listen for OAuth success message
     window.addEventListener('message', function handler(event) {
@@ -259,11 +272,7 @@ async function connectUserFacebook() {
     const authUrl = response.data.authUrl;
 
     // Open OAuth popup
-    const popup = window.open(
-      authUrl,
-      'Facebook OAuth',
-      'width=600,height=700,scrollbars=yes'
-    );
+    const popup = window.open(authUrl, 'Facebook OAuth', 'width=600,height=700,scrollbars=yes');
 
     // Listen for OAuth success message
     window.addEventListener('message', function handler(event) {
@@ -297,11 +306,7 @@ async function connectUserInstagram() {
     const authUrl = response.data.authUrl;
 
     // Open OAuth popup
-    const popup = window.open(
-      authUrl,
-      'Instagram OAuth',
-      'width=600,height=700,scrollbars=yes'
-    );
+    const popup = window.open(authUrl, 'Instagram OAuth', 'width=600,height=700,scrollbars=yes');
 
     // Listen for OAuth success message
     window.addEventListener('message', function handler(event) {
@@ -318,6 +323,61 @@ async function connectUserInstagram() {
   } catch (error) {
     hideUserPlatformLoading();
     showUserPlatformError(`Failed to connect Instagram: ${error.message}`);
+  }
+}
+
+/**
+ * Connect TikTok - Show modal for RTMP credentials input
+ */
+function connectUserTikTok() {
+  const modal = document.getElementById('user-tiktok-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+/**
+ * Submit TikTok connection
+ */
+async function submitUserTikTokConnection() {
+  const rtmpServer = document.getElementById('user-tiktok-rtmp-server')?.value.trim();
+  const streamKey = document.getElementById('user-tiktok-stream-key')?.value.trim();
+
+  if (!rtmpServer || !streamKey) {
+    showUserPlatformError('Please provide both RTMP server and stream key');
+    return;
+  }
+
+  try {
+    showUserPlatformLoading('Connecting to TikTok...');
+
+    await userPlatformRequest('/api/v1/platforms/tiktok/connect', {
+      method: 'POST',
+      body: JSON.stringify({ rtmpServer, streamKey }),
+    });
+
+    hideUserPlatformLoading();
+    closeUserTikTokModal();
+    showUserPlatformSuccess('TikTok connected successfully!');
+    loadUserPlatforms();
+  } catch (error) {
+    hideUserPlatformLoading();
+    showUserPlatformError(`Failed to connect TikTok: ${error.message}`);
+  }
+}
+
+/**
+ * Close TikTok modal
+ */
+function closeUserTikTokModal() {
+  const modal = document.getElementById('user-tiktok-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    // Clear inputs
+    const rtmpServerInput = document.getElementById('user-tiktok-rtmp-server');
+    const streamKeyInput = document.getElementById('user-tiktok-stream-key');
+    if (rtmpServerInput) rtmpServerInput.value = '';
+    if (streamKeyInput) streamKeyInput.value = '';
   }
 }
 
@@ -406,7 +466,10 @@ window.userPlatforms = {
   connectUserYouTube,
   connectUserFacebook,
   connectUserInstagram,
+  connectUserTikTok,
   disconnectUserPlatform,
   submitUserTelegramConnection,
   closeUserTelegramModal,
+  submitUserTikTokConnection,
+  closeUserTikTokModal,
 };

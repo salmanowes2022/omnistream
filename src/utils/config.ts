@@ -24,12 +24,6 @@ export interface Config {
     redirectUri: string;
   };
 
-  tiktok: {
-    clientKey: string;
-    clientSecret: string;
-    redirectUri: string;
-  };
-
   twitter: {
     clientId: string;
     clientSecret: string;
@@ -38,6 +32,11 @@ export interface Config {
 
   telegram: {
     botToken: string;
+  };
+
+  tiktok: {
+    enabled: boolean;
+    defaultRtmpServer: string;
   };
 
   instagram: {
@@ -86,15 +85,6 @@ export const config: Config = {
     ),
   },
 
-  tiktok: {
-    clientKey: getEnvVarOptional('TIKTOK_CLIENT_KEY', ''),
-    clientSecret: getEnvVarOptional('TIKTOK_CLIENT_SECRET', ''),
-    redirectUri: getEnvVarOptional(
-      'TIKTOK_REDIRECT_URI',
-      'http://localhost:3000/api/v1/auth/tiktok/callback'
-    ),
-  },
-
   twitter: {
     clientId: getEnvVarOptional('TWITTER_CLIENT_ID', ''),
     clientSecret: getEnvVarOptional('TWITTER_CLIENT_SECRET', ''),
@@ -106,6 +96,14 @@ export const config: Config = {
 
   telegram: {
     botToken: getEnvVarOptional('TELEGRAM_BOT_TOKEN', ''),
+  },
+
+  tiktok: {
+    enabled: getEnvVarOptional('TIKTOK_ENABLED', 'true') === 'true',
+    defaultRtmpServer: getEnvVarOptional(
+      'TIKTOK_DEFAULT_RTMP_SERVER',
+      'rtmp://push.tiktok.com/live'
+    ),
   },
 
   instagram: {

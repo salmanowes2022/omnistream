@@ -100,6 +100,14 @@ export class TwitterProvider implements StreamProvider {
   ): Promise<boolean> {
     throw new UnsupportedFeatureError('Twitter', 'message highlighting');
   }
+
+  async sendChatMessage(
+    _platformStreamId: string,
+    _text: string,
+    _tokens: OAuthToken
+  ): Promise<{ status: 'success' | 'error' | 'unsupported'; error?: string }> {
+    return { status: 'unsupported', error: 'Twitter chat messages are not supported.' };
+  }
 }
 
 export const twitterProvider = new TwitterProvider();
