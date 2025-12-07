@@ -110,7 +110,13 @@ function connectToChat() {
         break;
 
       case 'error':
-        showStatus('error', data.error);
+        // Handle rate limit errors specially
+        if (data.rateLimitExceeded) {
+          const seconds = Math.ceil(data.resetIn / 1000);
+          showStatus('error', `${data.error} (wait ${seconds}s)`);
+        } else {
+          showStatus('error', data.error);
+        }
         break;
 
       default:

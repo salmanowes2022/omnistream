@@ -8,6 +8,8 @@ import { db } from '../database/index.js';
 import { providerRegistry } from '../providers/index.js';
 import { logger } from '../utils/logger.js';
 import { ChatMessage, Platform } from '../core/interfaces.js';
+import { RateLimiter } from '../utils/rate-limiter.js';
+import { retryWithBackoff } from '../utils/retry.js';
 
 interface ChatClient {
   ws: WebSocket;
@@ -30,10 +32,13 @@ export class ChatServer {
   private clients: Map<WebSocket, ChatClient> = new Map();
   private pollIntervals: Map<string, NodeJS.Timeout> = new Map();
   private enablePolling: boolean;
+  private rateLimiter: RateLimiter;
 
   constructor(server: Server, options?: { enablePolling?: boolean }) {
     this.enablePolling = options?.enablePolling ?? true;
     this.wss = new WebSocketServer({ server, path: '/ws/chat' });
+    // Rate limit: 10 messages per minute per stream+platform combo
+    this.rateLimiter = new RateLimiter(10, 60000);
     this.setupWebSocketServer();
   }
 
@@ -313,6 +318,28 @@ export class ChatServer {
         return;
       }
 
+      // Check rate limit (per stream+platform)
+      const rateLimitKey = `${client.streamId}:${platformType}`;
+      const rateLimit = this.rateLimiter.checkLimit(rateLimitKey);
+
+      if (!rateLimit.allowed) {
+        const resetInSeconds = Math.ceil(rateLimit.resetIn / 1000);
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: `Rate limit exceeded. Please wait ${resetInSeconds} seconds before sending more messages.`,
+            rateLimitExceeded: true,
+            resetIn: rateLimit.resetIn,
+          })
+        );
+        logger.warn('Rate limit exceeded', {
+          streamId: client.streamId,
+          platform: platformType,
+          resetIn: rateLimit.resetIn,
+        });
+        return;
+      }
+
       // Ensure the platform is configured for this stream
       const platformStreams = await db.getPlatformStreams(client.streamId);
       const platformStream = platformStreams.find((ps) => ps.platform === platformType);
@@ -329,10 +356,20 @@ export class ChatServer {
       const provider = providerRegistry.getProvider(platformType);
       const tokens = await db.getOAuthTokens(client.communityId, platformType);
 
-      const sendResult = await provider.sendChatMessage(
-        platformStream.platformStreamId,
-        text,
-        tokens.tokens
+      // Send message with retry logic for transient failures
+      const sendResult = await retryWithBackoff(
+        async () => {
+          return await provider.sendChatMessage(
+            platformStream.platformStreamId,
+            text,
+            tokens.tokens
+          );
+        },
+        {
+          maxAttempts: 3,
+          initialDelayMs: 500,
+          maxDelayMs: 5000,
+        }
       );
 
       if (sendResult.status === 'unsupported') {
@@ -488,6 +525,9 @@ export class ChatServer {
         clearInterval(interval);
       }
       this.pollIntervals.clear();
+
+      // Destroy rate limiter
+      this.rateLimiter.destroy();
 
       // Forcefully terminate all client connections
       for (const client of this.clients.values()) {

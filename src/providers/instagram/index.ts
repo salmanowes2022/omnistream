@@ -87,6 +87,13 @@ export class InstagramProvider implements StreamProvider {
   ): Promise<boolean> {
     throw new UnsupportedFeatureError('Instagram', 'message highlighting');
   }
+
+  async sendChatMessage(): Promise<{
+    status: 'success' | 'error' | 'unsupported';
+    error?: string;
+  }> {
+    return { status: 'unsupported', error: 'Instagram chat messages are not supported.' };
+  }
 }
 
 export const instagramProvider = new InstagramProvider();

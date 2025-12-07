@@ -1800,7 +1800,13 @@ function connectToLiveChat(streamId, communityId) {
 
             case 'error':
                 console.error('Chat error:', data.error);
-                alert('Chat error: ' + data.error);
+                // Handle rate limit errors with more context
+                if (data.rateLimitExceeded) {
+                    const seconds = Math.ceil(data.resetIn / 1000);
+                    alert(`Rate limit: ${data.error} (wait ${seconds}s)`);
+                } else {
+                    alert('Chat error: ' + data.error);
+                }
                 break;
 
             default:
