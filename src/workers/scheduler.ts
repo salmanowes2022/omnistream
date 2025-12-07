@@ -172,16 +172,26 @@ async function processStreamJob(
       };
     }
 
-    const payload = JSON.parse(job.payload) as {
-      streamId?: string;
-    };
+    // Parse payload for future use (currently unused but may be needed for other platforms)
+    // const payload = JSON.parse(job.payload) as {
+    //   streamId?: string;
+    // };
 
     // Execute stream scheduling based on platform
     switch (platform) {
       case Platform.YOUTUBE: {
         // YouTube supports native scheduled broadcasts
+        // YouTube requires a non-empty title
+        const title = job.title?.trim() || 'Scheduled Stream';
+        if (!title || title.length === 0) {
+          return {
+            status: 'failed',
+            error: 'YouTube requires a valid title for scheduled streams',
+          };
+        }
+
         const result = await youtubeAdapter.scheduleEvent({
-          title: job.title,
+          title,
           description: job.description ?? '',
           scheduledAt: job.scheduledAt,
           credentials: {
@@ -193,29 +203,13 @@ async function processStreamJob(
       }
 
       case Platform.FACEBOOK: {
-        // Facebook supports scheduled live videos
-        // However, we'll create the stream immediately and user will start it at scheduled time
-        // This is because Facebook's scheduled_publish_time doesn't work for live videos
-
-        // If there's a streamId in payload, we can update it
-        // Otherwise, we need to create a new stream via streamService
-        if (payload.streamId) {
-          logger.info('Facebook scheduled stream - stream already created', {
-            streamId: payload.streamId,
-          });
-          return {
-            status: 'scheduled',
-            broadcastId: payload.streamId,
-          };
-        } else {
-          // Create stream immediately (user will start it at scheduled time)
-          logger.warn('Facebook scheduled streams should be created via /streams endpoint first');
-          return {
-            status: 'failed',
-            error:
-              'Facebook scheduled streams require creating the stream first via /api/v1/streams',
-          };
-        }
+        // Facebook doesn't support native scheduled live streams via API
+        // User should create the stream in advance and start it manually at scheduled time
+        return {
+          status: 'unsupported',
+          error:
+            'Facebook does not support scheduled live streams via API. Please create your stream in the Streams section and start it manually at your scheduled time.',
+        };
       }
 
       case Platform.INSTAGRAM:

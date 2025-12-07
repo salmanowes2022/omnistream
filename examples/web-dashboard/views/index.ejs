@@ -103,6 +103,7 @@
                         <label for="schedule-type" class="form-label">Event Type</label>
                         <select
                             id="schedule-type"
+                            onchange="toggleScheduleFormFields()"
                             style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
                         >
                             <option value="stream">Live Stream</option>
@@ -120,7 +121,17 @@
                         />
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group" id="schedule-content-group" style="display: none;">
+                        <label for="schedule-content" class="form-label">Post Content</label>
+                        <textarea
+                            id="schedule-content"
+                            placeholder="What do you want to post?"
+                            rows="4"
+                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; resize: vertical;"
+                        ></textarea>
+                    </div>
+
+                    <div class="form-group" id="schedule-description-group">
                         <label for="schedule-description" class="form-label">Description (Optional)</label>
                         <textarea
                             id="schedule-description"
@@ -128,6 +139,16 @@
                             rows="4"
                             style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; resize: vertical;"
                         ></textarea>
+                    </div>
+
+                    <div class="form-group" id="schedule-media-group" style="display: none;">
+                        <label for="schedule-media-url" class="form-label">Media URL (Optional)</label>
+                        <input
+                            type="url"
+                            id="schedule-media-url"
+                            placeholder="https://example.com/image.jpg"
+                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                        />
                     </div>
 
                     <div class="form-group">

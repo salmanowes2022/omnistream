@@ -1405,6 +1405,29 @@ function hidePostError() {
 
 // ==================== UNIFIED SCHEDULING SYSTEM ====================
 
+// Toggle schedule form fields based on type
+function toggleScheduleFormFields() {
+    const type = document.getElementById('schedule-type').value;
+    const contentGroup = document.getElementById('schedule-content-group');
+    const descriptionGroup = document.getElementById('schedule-description-group');
+    const mediaGroup = document.getElementById('schedule-media-group');
+    const titleLabel = document.querySelector('label[for="schedule-title"]');
+
+    if (type === 'post') {
+        // For posts: show content and media, hide description, change title label
+        if (contentGroup) contentGroup.style.display = 'block';
+        if (descriptionGroup) descriptionGroup.style.display = 'none';
+        if (mediaGroup) mediaGroup.style.display = 'block';
+        if (titleLabel) titleLabel.textContent = 'Title (Optional)';
+    } else {
+        // For streams: show description, hide content and media, change title label
+        if (contentGroup) contentGroup.style.display = 'none';
+        if (descriptionGroup) descriptionGroup.style.display = 'block';
+        if (mediaGroup) mediaGroup.style.display = 'none';
+        if (titleLabel) titleLabel.textContent = 'Title';
+    }
+}
+
 // Schedule an event
 async function scheduleEvent() {
     const jwtToken = localStorage.getItem('omnistream_jwt_token');
@@ -1417,6 +1440,8 @@ async function scheduleEvent() {
     const type = document.getElementById('schedule-type').value;
     const title = document.getElementById('schedule-title').value.trim();
     const description = document.getElementById('schedule-description').value.trim() || undefined;
+    const content = document.getElementById('schedule-content').value.trim() || undefined;
+    const mediaUrl = document.getElementById('schedule-media-url').value.trim() || undefined;
     const datetime = document.getElementById('schedule-datetime').value;
 
     // Get selected platforms
@@ -1430,9 +1455,16 @@ async function scheduleEvent() {
     });
 
     // Validate input
-    if (!title) {
-        showScheduleError('Please enter an event title');
-        return;
+    if (type === 'post') {
+        if (!content && !title) {
+            showScheduleError('Please enter post content or title');
+            return;
+        }
+    } else {
+        if (!title) {
+            showScheduleError('Please enter an event title');
+            return;
+        }
     }
 
     if (!datetime) {
@@ -1463,8 +1495,10 @@ async function scheduleEvent() {
             body: JSON.stringify({
                 platforms: selectedPlatforms,
                 type,
-                title,
+                title: title || undefined,
                 description,
+                content,
+                mediaUrl,
                 scheduledAt
             })
         });
@@ -1510,6 +1544,7 @@ async function loadScheduledEvents() {
             return;
         }
 
+        console.log('Loaded scheduled events:', data.jobs);
         displayScheduledEvents(data.jobs || []);
     } catch (error) {
         console.error('Error loading scheduled events:', error);
@@ -1533,7 +1568,9 @@ function displayScheduledEvents(jobs) {
     const platformIcons = {
         twitter: '𝕏',
         telegram: '✈',
-        youtube: '▶'
+        youtube: '▶',
+        facebook: '👥',
+        instagram: '📷'
     };
 
     const statusColors = {
@@ -1548,7 +1585,49 @@ function displayScheduledEvents(jobs) {
         const isPast = scheduledDate < new Date();
         const statusColor = statusColors[job.status] || '#666';
 
-        const platformsStr = job.platforms.map(p => platformIcons[p] || p).join(' ');
+        console.log('Job platforms:', job.platforms);
+        console.log('Job payload:', job.payload);
+
+        // Parse results from payload if job is done/failed
+        const results = job.payload?.results || {};
+
+        // Create platform status badges with results
+        const platformBadges = job.platforms.map(p => {
+            const icon = platformIcons[p] || '•';
+            const name = p.charAt(0).toUpperCase() + p.slice(1);
+            const result = results[p];
+
+            let badgeColor = '#f0f0f0';
+            let statusIcon = '';
+            let statusText = '';
+
+            if (job.status === 'done' || job.status === 'failed') {
+                if (result) {
+                    if (result.status === 'posted' || result.status === 'scheduled') {
+                        badgeColor = '#e8f5e9';
+                        statusIcon = '✓';
+                        statusText = result.postUrl ? `<a href="${escapeHtml(result.postUrl)}" target="_blank" style="color: #2e7d32; text-decoration: none; font-size: 11px;">View →</a>` : '';
+                    } else if (result.status === 'failed') {
+                        badgeColor = '#ffebee';
+                        statusIcon = '✗';
+                        const errorMsg = result.error || 'Unknown error';
+                        statusText = `<span style="color: #c62828; font-size: 11px; cursor: help;" title="${escapeHtml(errorMsg)}">Error: ${escapeHtml(errorMsg.substring(0, 30))}${errorMsg.length > 30 ? '...' : ''}</span>`;
+                    } else if (result.status === 'unsupported') {
+                        badgeColor = '#fff3e0';
+                        statusIcon = '⚠';
+                        const errorMsg = result.error || 'Not supported';
+                        statusText = `<span style="color: #ef6c00; font-size: 11px; cursor: help;" title="${escapeHtml(errorMsg)}">Unsupported</span>`;
+                    }
+                }
+            }
+
+            return `<span style="display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; background: ${badgeColor}; padding: 6px 10px; border-radius: 8px; font-size: 13px; margin-right: 6px; margin-bottom: 6px;">
+                <span style="display: flex; align-items: center; gap: 4px;">
+                    ${icon} ${name} ${statusIcon}
+                </span>
+                ${statusText}
+            </span>`;
+        }).join('');
 
         return `
             <div style="
@@ -1559,12 +1638,14 @@ function displayScheduledEvents(jobs) {
             ">
                 <div style="display: flex; justify-content: space-between; align-items: start;">
                     <div style="flex: 1;">
-                        <h4 style="margin: 0 0 5px 0; font-size: 16px;">${job.title || 'Untitled Event'}</h4>
-                        <p style="margin: 0 0 8px 0; color: #666; font-size: 14px;">${job.description || ''}</p>
-                        <div style="display: flex; gap: 15px; font-size: 14px; color: #666;">
+                        <h4 style="margin: 0 0 5px 0; font-size: 16px;">${escapeHtml(job.title || 'Untitled Event')}</h4>
+                        <p style="margin: 0 0 8px 0; color: #666; font-size: 14px;">${escapeHtml(job.description || job.payload?.content || '')}</p>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 14px; color: #666; margin-bottom: 8px;">
                             <span>📅 ${scheduledDate.toLocaleString()}</span>
-                            <span>${platformsStr}</span>
                             <span style="text-transform: capitalize;">Type: ${job.type}</span>
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            ${platformBadges}
                         </div>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
@@ -1589,10 +1670,12 @@ function displayScheduledEvents(jobs) {
 function clearScheduleForm() {
     document.getElementById('schedule-title').value = '';
     document.getElementById('schedule-description').value = '';
+    document.getElementById('schedule-content').value = '';
+    document.getElementById('schedule-media-url').value = '';
     document.getElementById('schedule-datetime').value = '';
 
     // Uncheck all platform checkboxes
-    const checkboxes = ['schedule-platform-youtube', 'schedule-platform-twitter', 'schedule-platform-telegram'];
+    const checkboxes = ['schedule-platform-youtube', 'schedule-platform-twitter', 'schedule-platform-telegram', 'schedule-platform-facebook'];
     checkboxes.forEach(id => {
         const checkbox = document.getElementById(id);
         if (checkbox) checkbox.checked = false;
