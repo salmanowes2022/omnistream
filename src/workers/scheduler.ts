@@ -60,7 +60,7 @@ async function processPostJob(
     };
 
     const content = payload.content || job.description || job.title || 'Untitled Post';
-    const mediaUrl = payload.mediaUrl;
+    const mediaUrl = payload.mediaUrl ?? undefined;
 
     // Execute the post based on platform
     switch (platform) {
@@ -71,8 +71,8 @@ async function processPostJob(
           mediaUrl,
           credentials: {
             accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken || undefined,
-            extra: tokens.extra || undefined,
+            refreshToken: tokens.refreshToken ?? undefined,
+            extra: tokens.extra ?? undefined,
           },
         });
         return result as ScheduleEventResult;
@@ -86,7 +86,8 @@ async function processPostJob(
           mediaUrl,
           credentials: {
             accessToken: tokens.accessToken,
-            extra: tokens.extra || undefined,
+            refreshToken: undefined,
+            extra: tokens.extra ?? undefined,
           },
         });
         return result as ScheduleEventResult;
@@ -98,7 +99,8 @@ async function processPostJob(
           mediaUrl,
           credentials: {
             accessToken: tokens.accessToken,
-            extra: tokens.extra || undefined,
+            refreshToken: undefined,
+            extra: tokens.extra ?? undefined,
           },
         });
         return result as ScheduleEventResult;
@@ -110,8 +112,8 @@ async function processPostJob(
           mediaUrl,
           credentials: {
             accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken || undefined,
-            extra: tokens.extra || undefined,
+            refreshToken: tokens.refreshToken ?? undefined,
+            extra: tokens.extra ?? undefined,
           },
         });
         return result as ScheduleEventResult;
@@ -123,7 +125,8 @@ async function processPostJob(
           mediaUrl,
           credentials: {
             accessToken: tokens.accessToken,
-            extra: tokens.extra || undefined,
+            refreshToken: undefined,
+            extra: tokens.extra ?? undefined,
           },
         });
         return result as ScheduleEventResult;
@@ -136,10 +139,11 @@ async function processPostJob(
         };
     }
   } catch (error) {
-    logger.error('Error processing scheduled post', { platform, error });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('Error processing scheduled post', { platform, error: errorMessage });
     return {
       status: 'failed',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: errorMessage,
     };
   }
 }
@@ -178,11 +182,11 @@ async function processStreamJob(
         // YouTube supports native scheduled broadcasts
         const result = await youtubeAdapter.scheduleEvent({
           title: job.title,
-          description: job.description || '',
+          description: job.description ?? '',
           scheduledAt: job.scheduledAt,
           credentials: {
             accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken || undefined,
+            refreshToken: tokens.refreshToken ?? undefined,
           },
         });
         return result as ScheduleEventResult;
@@ -230,10 +234,11 @@ async function processStreamJob(
         };
     }
   } catch (error) {
-    logger.error('Error processing scheduled stream', { platform, error });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('Error processing scheduled stream', { platform, error: errorMessage });
     return {
       status: 'failed',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: errorMessage,
     };
   }
 }
@@ -299,10 +304,11 @@ async function processJob(jobId: string): Promise<void> {
           };
         }
       } catch (error) {
-        logger.error('Error processing platform', { platform, error });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error('Error processing platform', { platform, error: errorMessage });
         results[platform] = {
           status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errorMessage,
         };
       }
     }

@@ -9,9 +9,9 @@ export interface ScheduleRequest {
   type: 'stream' | 'post';
   title?: string;
   description?: string;
+  content?: string; // Post content
+  mediaUrl?: string; // Media URL for posts
   scheduledAt: string;
-  content?: string;
-  mediaUrl?: string;
 }
 
 export interface ScheduleResponse {

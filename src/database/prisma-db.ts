@@ -40,14 +40,21 @@ export class PrismaDatabase {
 
   // Community methods
   async createCommunity(name: string, userId?: string): Promise<Community> {
-    const data: any = { name };
-    // If the Prisma schema defines a relation field `user` (not a scalar `userId`), connect it here.
-    if (userId) {
-      data.user = { connect: { id: userId } };
+    if (!userId) {
+      throw new Error('userId is required to create a community');
+    }
+
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new Error(`User not found: ${userId}`);
     }
 
     const community = await this.prisma.community.create({
-      data,
+      data: {
+        name,
+        userId,
+      },
     });
 
     return {
