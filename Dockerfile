@@ -10,8 +10,12 @@ COPY tsconfig.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code
+# Copy source code and Prisma schema
 COPY src ./src
+COPY prisma ./prisma
+
+# Generate Prisma Client
+RUN npx prisma generate
 
 # Build TypeScript
 RUN npm run build
@@ -23,7 +27,11 @@ WORKDIR /app
 
 # Install production dependencies only
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY prisma ./prisma
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+
+# Generate Prisma Client (needs to be done after dependencies are installed)
+RUN npx prisma generate
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist

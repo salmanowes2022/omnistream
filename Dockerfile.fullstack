@@ -47,12 +47,14 @@ RUN apk add --no-cache postgresql-client
 
 # Copy backend package files and install production dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY prisma ./prisma
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+
+# Generate Prisma Client
+RUN npx prisma generate
 
 # Copy backend built application from builder
 COPY --from=backend-builder /app/backend/dist ./dist
-COPY --from=backend-builder /app/backend/node_modules/.prisma ./node_modules/.prisma
-COPY prisma ./prisma
 
 # Copy frontend application from builder
 COPY --from=frontend-builder /app/frontend ./web-dashboard
