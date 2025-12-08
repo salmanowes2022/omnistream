@@ -118,36 +118,16 @@ async function userLogin() {
     localStorage.setItem('omnistream_jwt_token', data.data.token);
     localStorage.setItem('omnistream_user_email', data.data.user.email);
 
-    showStatus('auth-status', 'Login successful!', 'success');
+    showStatus('auth-status', 'Login successful! Redirecting...', 'success');
 
     // Clear form
     document.getElementById('login-email').value = '';
     document.getElementById('login-password').value = '';
 
-    // Show user platforms section
-    document.getElementById('schedule-event-section').style.display = 'block';
-    document.getElementById('create-post-section').style.display = 'block';
-    document.getElementById('user-platforms-section').style.display = 'block';
-
-    // Load scheduled events
-    loadScheduledEvents();
-
-    // Load user platforms
-    if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
-      setTimeout(() => {
-        window.userPlatforms.loadUserPlatforms();
-      }, 500);
-    }
-
-    // Load platform checkboxes for stream creation
+    // Redirect to dashboard
     setTimeout(() => {
-      renderPlatformCheckboxes();
+      redirectToDashboard();
     }, 1000);
-
-    // Load user's first community or create one
-    setTimeout(async () => {
-      await loadUserCommunities();
-    }, 500);
   } catch (error) {
     showStatus('auth-status', error.message, 'error');
   }
@@ -155,11 +135,12 @@ async function userLogin() {
 
 // User registration with JWT
 async function userRegister() {
+  const name = document.getElementById('register-name').value.trim();
   const email = document.getElementById('register-email').value.trim();
   const password = document.getElementById('register-password').value;
   const passwordConfirm = document.getElementById('register-password-confirm').value;
 
-  if (!email || !password || !passwordConfirm) {
+  if (!name || !email || !password || !passwordConfirm) {
     showStatus('auth-status', 'Please fill in all fields', 'error');
     return;
   }
@@ -194,7 +175,7 @@ async function userRegister() {
     const response = await fetch('/api/v1/user-auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, name }),
     });
 
     const data = await parseJsonResponse(response, 'User registration');
@@ -207,40 +188,48 @@ async function userRegister() {
     localStorage.setItem('omnistream_jwt_token', data.data.token);
     localStorage.setItem('omnistream_user_email', data.data.user.email);
 
-    showStatus('auth-status', 'Account created successfully!', 'success');
+    showStatus('auth-status', 'Account created successfully! Redirecting...', 'success');
 
     // Clear form
+    document.getElementById('register-name').value = '';
     document.getElementById('register-email').value = '';
     document.getElementById('register-password').value = '';
     document.getElementById('register-password-confirm').value = '';
 
-    // Show user platforms section
-    document.getElementById('schedule-event-section').style.display = 'block';
-    document.getElementById('create-post-section').style.display = 'block';
-    document.getElementById('user-platforms-section').style.display = 'block';
-
-    // Load scheduled events
-    loadScheduledEvents();
-
-    // Load user platforms
-    if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
-      setTimeout(() => {
-        window.userPlatforms.loadUserPlatforms();
-      }, 500);
-    }
-
-    // Load platform checkboxes for stream creation
+    // Redirect to dashboard
     setTimeout(() => {
-      renderPlatformCheckboxes();
+      redirectToDashboard();
     }, 1000);
-
-    // Create a default community for the user
-    setTimeout(async () => {
-      await createUserCommunity('My Streaming Community');
-    }, 500);
   } catch (error) {
     showStatus('auth-status', error.message, 'error');
   }
+}
+
+// Redirect to dashboard after successful auth
+function redirectToDashboard() {
+  document.getElementById('auth-section').style.display = 'none';
+  document.getElementById('schedule-event-section').style.display = 'block';
+  document.getElementById('create-post-section').style.display = 'block';
+  document.getElementById('user-platforms-section').style.display = 'block';
+  document.getElementById('streams-section').style.display = 'block';
+
+  // Load scheduled events
+  loadScheduledEvents();
+
+  // Load user platforms
+  if (window.userPlatforms && window.userPlatforms.loadUserPlatforms) {
+    window.userPlatforms.loadUserPlatforms();
+  }
+
+  // Load platform checkboxes for stream creation
+  setTimeout(() => {
+    renderPlatformCheckboxes();
+  }, 500);
+
+  // Create a default community for the user
+  setTimeout(async () => {
+    await createUserCommunity('My Streaming Community');
+  }, 500);
 }
 
 // Load user's communities
@@ -317,82 +306,6 @@ async function createUserCommunity(name) {
     showStatus('auth-status', `Welcome! Your community "${name}" has been created.`, 'success');
 
     // Load community profile
-    setTimeout(() => {
-      loadCommunityProfile();
-    }, 500);
-  } catch (error) {
-    showStatus('auth-status', error.message, 'error');
-  }
-}
-
-// Community creation (registration)
-async function createCommunity() {
-  const communityName = document.getElementById('community-name').value.trim();
-
-  if (!communityName) {
-    showStatus('auth-status', 'Please enter a community name', 'error');
-    return;
-  }
-
-  try {
-    const response = await fetch('/api/communities', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: communityName }),
-    });
-
-    const data = await parseJsonResponse(response, 'Create community');
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.error || 'Failed to create community');
-    }
-
-    // Save community ID
-    communityId = data.data.id;
-    localStorage.setItem('omnistream_community_id', communityId);
-
-    showStatus('auth-status', `Community "${communityName}" created successfully!`, 'success');
-
-    // Clear form
-    document.getElementById('community-name').value = '';
-
-    // Load community profile
-    setTimeout(() => {
-      loadCommunityProfile();
-    }, 500);
-  } catch (error) {
-    showStatus('auth-status', error.message, 'error');
-  }
-}
-
-// Login with existing community ID
-async function loginWithCommunityId() {
-  const inputCommunityId = document.getElementById('login-communityid').value.trim();
-
-  if (!inputCommunityId) {
-    showStatus('auth-status', 'Please enter your community ID', 'error');
-    return;
-  }
-
-  try {
-    // Verify community exists
-    const response = await fetch(`/api/community/${inputCommunityId}`);
-
-    const data = await parseJsonResponse(response, 'Login');
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.error || 'Invalid community ID');
-    }
-
-    // Save community ID
-    communityId = inputCommunityId;
-    localStorage.setItem('omnistream_community_id', communityId);
-
-    showStatus('auth-status', 'Login successful!', 'success');
-
-    // Clear form
-    document.getElementById('login-communityid').value = '';
-
     setTimeout(() => {
       loadCommunityProfile();
     }, 500);

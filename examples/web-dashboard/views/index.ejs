@@ -16,79 +16,61 @@
 
         <!-- Authentication Section -->
         <div id="auth-section" class="section">
-            <div class="card">
-                <h2>Get Started</h2>
+            <div class="auth-container">
+                <div class="auth-card">
+                    <div class="auth-header">
+                        <h2>Welcome to OmniStream</h2>
+                        <p>Multi-platform streaming made simple</p>
+                    </div>
 
-                <!-- Tab Navigation -->
-                <div class="auth-tabs">
-                    <button id="tab-user-login" class="tab-btn active" onclick="switchAuthTab('user-login')">Login</button>
-                    <button id="tab-user-register" class="tab-btn" onclick="switchAuthTab('user-register')">Register</button>
-                    <button id="tab-community" class="tab-btn" onclick="switchAuthTab('community')">Community ID (Legacy)</button>
-                </div>
+                    <!-- Tab Navigation -->
+                    <div class="auth-tabs">
+                        <button id="tab-user-login" class="tab-btn active" onclick="switchAuthTab('user-login')">Login</button>
+                        <button id="tab-user-register" class="tab-btn" onclick="switchAuthTab('user-register')">Register</button>
+                    </div>
 
-                <!-- User Login Tab -->
-                <div id="user-login-form" class="auth-tab-content" style="display: block;">
-                    <h3>Login with Your Account</h3>
-                    <div class="form-group">
-                        <label for="login-email" class="form-label">Email</label>
-                        <input type="email" id="login-email" placeholder="Enter your email" />
-                    </div>
-                    <div class="form-group">
-                        <label for="login-password" class="form-label">Password</label>
-                        <input type="password" id="login-password" placeholder="Enter your password" />
-                    </div>
-                    <button onclick="userLogin()" class="btn btn-primary">Login</button>
-                    <p class="info-text">
-                        Don't have an account? Click the Register tab above
-                    </p>
-                </div>
-
-                <!-- User Register Tab -->
-                <div id="user-register-form" class="auth-tab-content" style="display: none;">
-                    <h3>Create Your Account</h3>
-                    <div class="form-group">
-                        <label for="register-email" class="form-label">Email</label>
-                        <input type="email" id="register-email" placeholder="Enter your email" />
-                    </div>
-                    <div class="form-group">
-                        <label for="register-password" class="form-label">Password</label>
-                        <input type="password" id="register-password" placeholder="Min 8 chars, 1 uppercase, 1 number" />
-                    </div>
-                    <div class="form-group">
-                        <label for="register-password-confirm" class="form-label">Confirm Password</label>
-                        <input type="password" id="register-password-confirm" placeholder="Re-enter your password" />
-                    </div>
-                    <button onclick="userRegister()" class="btn btn-primary">Create Account</button>
-                    <p class="info-text">
-                        Your account will be secured with encrypted storage
-                    </p>
-                </div>
-
-                <!-- Community ID Tab (Legacy) -->
-                <div id="community-form" class="auth-tab-content" style="display: none;">
-                    <div class="auth-forms">
+                    <!-- User Login Tab -->
+                    <div id="user-login-form" class="auth-tab-content" style="display: block;">
                         <div class="form-group">
-                            <h3>Create New Community</h3>
-                            <label for="community-name" class="form-label">Community Name</label>
-                            <input type="text" id="community-name" placeholder="e.g., Gigaverse Gaming" />
-                            <button onclick="createCommunity()" class="btn btn-primary">Create Community</button>
-                            <p class="info-text">
-                                A unique community ID will be generated automatically
-                            </p>
+                            <label for="login-email" class="form-label">Email</label>
+                            <input type="email" id="login-email" placeholder="you@example.com" onkeypress="if(event.key==='Enter') userLogin()" />
                         </div>
                         <div class="form-group">
-                            <h3>Use Existing Community ID</h3>
-                            <label for="login-communityid" class="form-label">Community ID (UUID)</label>
-                            <input type="text" id="login-communityid" placeholder="Enter your community ID" />
-                            <button onclick="loginWithCommunityId()" class="btn btn-primary">Login</button>
-                            <p class="info-text">
-                                Enter your existing community ID to continue
-                            </p>
+                            <label for="login-password" class="form-label">Password</label>
+                            <input type="password" id="login-password" placeholder="Enter your password" onkeypress="if(event.key==='Enter') userLogin()" />
                         </div>
+                        <button onclick="userLogin()" class="btn btn-primary btn-block">Login</button>
+                        <p class="auth-footer-text">
+                            Don't have an account? <a href="#" onclick="switchAuthTab('user-register'); return false;">Sign up</a>
+                        </p>
                     </div>
-                </div>
 
-                <div id="auth-status" class="status-message"></div>
+                    <!-- User Register Tab -->
+                    <div id="user-register-form" class="auth-tab-content" style="display: none;">
+                        <div class="form-group">
+                            <label for="register-name" class="form-label">Name</label>
+                            <input type="text" id="register-name" placeholder="Your full name" onkeypress="if(event.key==='Enter') userRegister()" />
+                        </div>
+                        <div class="form-group">
+                            <label for="register-email" class="form-label">Email</label>
+                            <input type="email" id="register-email" placeholder="you@example.com" onkeypress="if(event.key==='Enter') userRegister()" />
+                        </div>
+                        <div class="form-group">
+                            <label for="register-password" class="form-label">Password</label>
+                            <input type="password" id="register-password" placeholder="Min 8 chars, 1 uppercase, 1 number" onkeypress="if(event.key==='Enter') userRegister()" />
+                        </div>
+                        <div class="form-group">
+                            <label for="register-password-confirm" class="form-label">Confirm Password</label>
+                            <input type="password" id="register-password-confirm" placeholder="Re-enter your password" onkeypress="if(event.key==='Enter') userRegister()" />
+                        </div>
+                        <button onclick="userRegister()" class="btn btn-primary btn-block">Create Account</button>
+                        <p class="auth-footer-text">
+                            Already have an account? <a href="#" onclick="switchAuthTab('user-login'); return false;">Login</a>
+                        </p>
+                    </div>
+
+                    <div id="auth-status" class="status-message"></div>
+                </div>
             </div>
         </div>
 
