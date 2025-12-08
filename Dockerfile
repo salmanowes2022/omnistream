@@ -14,8 +14,8 @@ RUN npm ci
 COPY src ./src
 COPY prisma ./prisma
 
-# Generate Prisma Client
-RUN npx prisma generate
+# Generate Prisma Client (use installed version)
+RUN npm exec prisma generate
 
 # Build TypeScript
 RUN npm run build
@@ -30,8 +30,8 @@ COPY package*.json ./
 COPY prisma ./prisma
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
-# Generate Prisma Client (needs to be done after dependencies are installed)
-RUN npx prisma generate
+# Generate Prisma Client (use installed version, not latest from npx)
+RUN npm exec prisma generate
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist

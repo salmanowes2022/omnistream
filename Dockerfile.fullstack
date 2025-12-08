@@ -50,8 +50,8 @@ COPY package*.json ./
 COPY prisma ./prisma
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
-# Generate Prisma Client
-RUN npx prisma generate
+# Generate Prisma Client (use installed version)
+RUN npm exec prisma generate
 
 # Copy backend built application from builder
 COPY --from=backend-builder /app/backend/dist ./dist
