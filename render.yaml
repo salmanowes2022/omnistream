@@ -1,12 +1,10 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: omnistream-db
-    plan: free
+databases:
+  - name: omnistream-db
     databaseName: omnistream
-    databaseUser: omnistream
-    ipAllowList: []
+    user: omnistream
+    plan: free
 
+services:
   # Backend API Server
   - type: web
     name: omnistream-api
