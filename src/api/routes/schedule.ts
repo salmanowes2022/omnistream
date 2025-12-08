@@ -9,6 +9,10 @@ import { ValidationError } from '../../core/errors.js';
 import { AuthRequest, requireAuth } from '../middleware/auth.js';
 import { Platform } from '../../core/interfaces.js';
 import type { ScheduleRequest, ScheduleResponse } from '../../types/schedule.js';
+import {
+  filterPlatformsByCapability,
+  getUnsupportedPlatforms,
+} from '../../utils/platform-capabilities.js';
 
 const router = express.Router();
 
@@ -65,11 +69,22 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
       throw new ValidationError(`Invalid platforms: ${invalidPlatforms.join(', ')}`);
     }
 
+    // Check platform capabilities and filter unsupported
+    const capability = type === 'post' ? 'posting' : 'scheduling';
+    const supportedPlatforms = filterPlatformsByCapability(platforms, capability);
+    const unsupported = getUnsupportedPlatforms(platforms, capability);
+
+    if (unsupported.length > 0) {
+      throw new ValidationError(
+        `The following platforms don't support ${type === 'post' ? 'posting' : 'scheduled events'}: ${unsupported.join(', ')}`
+      );
+    }
+
     // Create scheduled job
     const job = await prisma.scheduledJob.create({
       data: {
         userId,
-        platforms: JSON.stringify(platforms),
+        platforms: JSON.stringify(supportedPlatforms),
         type,
         title: title || null,
         description: description || null,
