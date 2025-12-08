@@ -42,8 +42,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install PostgreSQL client for healthchecks and migrations
-RUN apk add --no-cache postgresql-client
+# Install PostgreSQL client for healthchecks and migrations, and OpenSSL for Prisma
+RUN apk add --no-cache postgresql-client openssl1.1-compat
 
 # Copy backend package files and install production dependencies
 COPY package*.json ./
