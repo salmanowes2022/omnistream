@@ -1,0 +1,60 @@
+# Render ignore file - exclude from deployment
+
+# Development
+node_modules
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files (use Render's environment variables instead)
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage
+.nyc_output
+*.test.ts
+*.spec.ts
+__tests__
+tests/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (optional - comment out if you want to include)
+# docs/
+# *.md
+
+# Examples (only if not needed in production)
+# examples/
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Local development
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile.fullstack
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Build artifacts (will be rebuilt)
+dist/

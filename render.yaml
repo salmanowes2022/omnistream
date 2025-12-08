@@ -1,0 +1,82 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: omnistream-db
+    plan: free
+    ipAllowList: []
+    databases:
+      - name: omnistream
+        user: omnistream
+
+  # Backend API Server
+  - type: web
+    name: omnistream-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      # Server Configuration
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+
+      # Database (auto-populated from database service)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: omnistream
+          property: connectionString
+
+      # YouTube OAuth - Add these in Render Dashboard
+      - key: YOUTUBE_CLIENT_ID
+        sync: false
+      - key: YOUTUBE_CLIENT_SECRET
+        sync: false
+      - key: YOUTUBE_REDIRECT_URI
+        value: https://omnistream-api.onrender.com/api/v1/auth/youtube/callback
+
+      # Facebook OAuth - Add these in Render Dashboard
+      - key: FACEBOOK_APP_ID
+        sync: false
+      - key: FACEBOOK_APP_SECRET
+        sync: false
+      - key: FACEBOOK_REDIRECT_URI
+        value: https://omnistream-api.onrender.com/api/v1/auth/facebook/callback
+
+      # TikTok OAuth - Add these in Render Dashboard
+      - key: TIKTOK_CLIENT_KEY
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_REDIRECT_URI
+        value: https://omnistream-api.onrender.com/api/v1/auth/tiktok/callback
+
+      # Security - Generate these securely
+      - key: API_KEY_SALT
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Rate Limiting
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+    healthCheckPath: /health
+
+  # Frontend Web Dashboard
+  - type: web
+    name: omnistream-dashboard
+    runtime: node
+    plan: free
+    buildCommand: cd examples/web-dashboard && npm install
+    startCommand: cd examples/web-dashboard && node server.js
+    envVars:
+      # Dashboard Configuration
+      - key: DASHBOARD_PORT
+        value: 10000 # Render uses port 10000 for web services
+      - key: OMNISTREAM_API_URL
+        value: https://omnistream-api.onrender.com
+      - key: NODE_ENV
+        value: production

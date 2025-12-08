@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # Omnistream Fullstack (Backend API + Frontend Dashboard)
+  omnistream-fullstack:
+    build:
+      context: .
+      dockerfile: Dockerfile.fullstack
+    container_name: omnistream-fullstack
+    ports:
+      - '3000:3000' # Backend API
+      - '4000:4000' # Frontend Dashboard
+    environment:
+      # Server
+      - PORT=3000
+      - NODE_ENV=production
+
+      # Web Dashboard
+      - WEB_DASHBOARD_PORT=4000
+      - API_BASE_URL=http://localhost:3000
+
+      # Database
+      - DATABASE_URL=postgresql://omnistream:${POSTGRES_PASSWORD:-changeme}@postgres:5432/omnistream
+
+      # YouTube OAuth
+      - YOUTUBE_CLIENT_ID=${YOUTUBE_CLIENT_ID}
+      - YOUTUBE_CLIENT_SECRET=${YOUTUBE_CLIENT_SECRET}
+      - YOUTUBE_REDIRECT_URI=${YOUTUBE_REDIRECT_URI:-http://localhost:3000/api/v1/auth/youtube/callback}
+
+      # Facebook OAuth
+      - FACEBOOK_APP_ID=${FACEBOOK_APP_ID}
+      - FACEBOOK_APP_SECRET=${FACEBOOK_APP_SECRET}
+      - FACEBOOK_REDIRECT_URI=${FACEBOOK_REDIRECT_URI:-http://localhost:3000/api/v1/auth/facebook/callback}
+
+      # TikTok OAuth
+      - TIKTOK_CLIENT_KEY=${TIKTOK_CLIENT_KEY}
+      - TIKTOK_CLIENT_SECRET=${TIKTOK_CLIENT_SECRET}
+      - TIKTOK_REDIRECT_URI=${TIKTOK_REDIRECT_URI:-http://localhost:3000/api/v1/auth/tiktok/callback}
+
+      # API Security
+      - API_KEY_SALT=${API_KEY_SALT}
+      - JWT_SECRET=${JWT_SECRET}
+
+      # Rate Limiting
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-900000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - omnistream-network
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    container_name: omnistream-db
+    environment:
+      - POSTGRES_USER=omnistream
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_DB=omnistream
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    restart: unless-stopped
+    networks:
+      - omnistream-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U omnistream']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  omnistream-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
