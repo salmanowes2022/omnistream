@@ -402,7 +402,7 @@ export class PlatformService {
         return;
       }
 
-      if (!tokens.refreshToken) {
+      if (!tokens.refreshToken || tokens.refreshToken.trim() === '') {
         throw new PlatformError(platform, 'No refresh token available', 401);
       }
 

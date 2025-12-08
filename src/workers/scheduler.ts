@@ -12,6 +12,7 @@
 
 import { prisma } from '../database/prisma-client.js';
 import { userService } from '../core/services/user-service.js';
+import { platformService } from '../core/services/platform-service.js';
 import { youtubeAdapter } from '../platforms/youtube/adapter.js';
 import { facebookAdapter } from '../platforms/facebook/adapter.js';
 import { instagramAdapter } from '../platforms/instagram/adapter.js';
@@ -345,6 +346,55 @@ async function processJob(jobId: string): Promise<void> {
   }
 }
 
+async function refreshExpiringTokens(): Promise<void> {
+  try {
+    const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+
+    const expiringAccounts = await prisma.socialAccount.findMany({
+      where: {
+        expiresAt: {
+          lte: oneHourFromNow,
+          gt: new Date(),
+        },
+        platform: {
+          in: ['youtube', 'x'],
+        },
+      },
+      select: {
+        userId: true,
+        platform: true,
+        expiresAt: true,
+      },
+      take: 20,
+    });
+
+    if (expiringAccounts.length === 0) {
+      logger.debug('No expiring tokens to refresh');
+      return;
+    }
+
+    logger.info(`Refreshing ${expiringAccounts.length} expiring tokens`);
+
+    for (const account of expiringAccounts) {
+      try {
+        await platformService.refreshPlatformTokens(account.userId, account.platform as Platform);
+        logger.info('Token refreshed successfully', {
+          userId: account.userId,
+          platform: account.platform,
+        });
+      } catch (error) {
+        logger.error('Failed to refresh token', {
+          userId: account.userId,
+          platform: account.platform,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+  } catch (error) {
+    logger.error('Error refreshing expiring tokens', error);
+  }
+}
+
 /**
  * Check for and process pending jobs
  */
@@ -399,11 +449,19 @@ export function startScheduler(): void {
 
   // Run immediately on start
   void processPendingJobs();
+  void refreshExpiringTokens();
 
   // Then run on interval
   setInterval(() => {
     void processPendingJobs();
   }, WORKER_INTERVAL);
+
+  setInterval(
+    () => {
+      void refreshExpiringTokens();
+    },
+    5 * 60 * 1000
+  );
 }
 
 /**

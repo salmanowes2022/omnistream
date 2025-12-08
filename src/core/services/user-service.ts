@@ -232,23 +232,33 @@ export class UserService {
       return null;
     }
 
-    // Decrypt tokens
-    const accessToken = decryptToken(socialAccount.accessToken);
-    const refreshToken = socialAccount.refreshToken
-      ? decryptToken(socialAccount.refreshToken)
-      : null;
+    try {
+      // Decrypt tokens with error handling
+      const accessToken = decryptToken(socialAccount.accessToken);
+      const refreshToken = socialAccount.refreshToken
+        ? decryptToken(socialAccount.refreshToken)
+        : null;
 
-    // Parse extra field
-    const extra = socialAccount.extra
-      ? (JSON.parse(socialAccount.extra) as Record<string, unknown>)
-      : null;
+      // Parse extra field
+      const extra = socialAccount.extra
+        ? (JSON.parse(socialAccount.extra) as Record<string, unknown>)
+        : null;
 
-    return {
-      accessToken,
-      refreshToken,
-      expiresAt: socialAccount.expiresAt,
-      extra,
-    };
+      return {
+        accessToken,
+        refreshToken,
+        expiresAt: socialAccount.expiresAt,
+        extra,
+      };
+    } catch (error) {
+      logger.error('Token decryption failed - platform connection may be corrupted', {
+        userId,
+        platform,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      // Return null to indicate connection is broken rather than throwing
+      return null;
+    }
   }
 
   /**
