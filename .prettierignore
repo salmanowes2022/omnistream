@@ -1,41 +1,5 @@
-# Dependencies
-node_modules/
-**/node_modules/
-
-# Build outputs
-dist/
-build/
-*.log
-
-# Coverage and test results
-coverage/
-.nyc_output/
-playwright-report/
-test-results/
-
-# Environment files
+node_modules
+dist
+*.db
 .env
-.env.*
-!.env.example
-
-# Cache and temp files
-.cache/
-*.tsbuildinfo
-
-# Documentation build artifacts
-docs/_build/
-
-# Lock files (don't format)
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-
-# Git
-.git/
-
-# IDE
-.vscode/
-.idea/
-
-# Public assets
-public/
+coverage
