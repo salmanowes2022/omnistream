@@ -30,8 +30,9 @@ COPY package*.json ./
 COPY prisma ./prisma
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
-# Generate Prisma Client (use installed version, not latest from npx)
-RUN npm exec prisma generate
+# Copy Prisma Client and CLI from builder stage (already generated with correct version)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist

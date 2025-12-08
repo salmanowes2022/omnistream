@@ -17,11 +17,11 @@ RUN npm ci
 COPY src ./src
 COPY prisma ./prisma
 
+# Generate Prisma client (must be done before build, using installed version)
+RUN npm exec prisma generate
+
 # Build backend TypeScript
 RUN npm run build
-
-# Generate Prisma client
-RUN npx prisma generate
 
 # Stage 2: Build Frontend
 FROM node:20-alpine AS frontend-builder
@@ -50,8 +50,9 @@ COPY package*.json ./
 COPY prisma ./prisma
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
-# Generate Prisma Client (use installed version)
-RUN npm exec prisma generate
+# Copy Prisma Client and CLI from backend builder (already generated with correct version)
+COPY --from=backend-builder /app/backend/node_modules/.prisma ./node_modules/.prisma
+COPY --from=backend-builder /app/backend/node_modules/@prisma ./node_modules/@prisma
 
 # Copy backend built application from builder
 COPY --from=backend-builder /app/backend/dist ./dist
