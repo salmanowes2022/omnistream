@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Omnistream</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔍 Debug Info</h1>
+
+            <div class="debug-section">
+                <h3>LocalStorage Community ID:</h3>
+                <code id="local-community-id">Loading...</code>
+                <button onclick="clearLocalStorage()" class="btn btn-secondary">Clear LocalStorage</button>
+            </div>
+
+            <div class="debug-section">
+                <h3>Test OAuth Status:</h3>
+                <input type="text" id="test-community-id" placeholder="Enter Community ID" />
+                <button onclick="testOAuthStatus()" class="btn btn-primary">Test Status</button>
+
+                <div id="status-results" style="margin-top: 20px;"></div>
+            </div>
+
+            <div class="debug-section">
+                <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Show current localStorage value
+        document.getElementById('local-community-id').textContent =
+            localStorage.getItem('omnistream_community_id') || '(not set)';
+
+        function clearLocalStorage() {
+            localStorage.removeItem('omnistream_community_id');
+            document.getElementById('local-community-id').textContent = '(cleared)';
+            alert('LocalStorage cleared! Reload the dashboard to start fresh.');
+        }
+
+        async function testOAuthStatus() {
+            const communityId = document.getElementById('test-community-id').value.trim();
+            if (!communityId) {
+                alert('Please enter a community ID');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('status-results');
+            resultsDiv.innerHTML = '<p>Testing...</p>';
+
+            try {
+                const platforms = ['youtube', 'facebook', 'tiktok'];
+                const results = await Promise.all(
+                    platforms.map(async (platform) => {
+                        try {
+                            const response = await fetch(`/api/auth/${platform}/status?communityId=${communityId}`);
+                            const data = await response.json();
+                            return { platform, data };
+                        } catch (error) {
+                            return { platform, error: error.message };
+                        }
+                    })
+                );
+
+                resultsDiv.innerHTML = `
+                    <h4>Results for Community: ${communityId}</h4>
+                    <pre>${JSON.stringify(results, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+
+    <style>
+        .debug-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .debug-section h3 {
+            margin-top: 0;
+        }
+        code {
+            display: block;
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        pre {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</body>
+</html>

@@ -7,7 +7,9 @@ import { Server } from 'http';
 import { db } from '../database/index.js';
 import { providerRegistry } from '../providers/index.js';
 import { logger } from '../utils/logger.js';
-import { Platform } from '../core/interfaces.js';
+import { ChatMessage, Platform } from '../core/interfaces.js';
+import { RateLimiter } from '../utils/rate-limiter.js';
+import { retryWithBackoff } from '../utils/retry.js';
 
 interface ChatClient {
   ws: WebSocket;
@@ -30,10 +32,13 @@ export class ChatServer {
   private clients: Map<WebSocket, ChatClient> = new Map();
   private pollIntervals: Map<string, NodeJS.Timeout> = new Map();
   private enablePolling: boolean;
+  private rateLimiter: RateLimiter;
 
   constructor(server: Server, options?: { enablePolling?: boolean }) {
     this.enablePolling = options?.enablePolling ?? true;
     this.wss = new WebSocketServer({ server, path: '/ws/chat' });
+    // Rate limit: 10 messages per minute per stream+platform combo
+    this.rateLimiter = new RateLimiter(10, 60000);
     this.setupWebSocketServer();
   }
 
@@ -87,6 +92,9 @@ export class ChatServer {
         break;
       case 'highlight':
         await this.handleHighlight(ws, message);
+        break;
+      case 'sendMessage':
+        await this.handleSendMessage(ws, message);
         break;
       default:
         ws.send(
@@ -263,6 +271,172 @@ export class ChatServer {
     }
   }
 
+  private async handleSendMessage(ws: WebSocket, message: WebSocketMessage): Promise<void> {
+    const client = this.clients.get(ws);
+    if (!client) {
+      ws.send(
+        JSON.stringify({
+          type: 'error',
+          error: 'Not subscribed to any stream',
+        })
+      );
+      return;
+    }
+
+    const { text } = message;
+
+    if (!text || typeof text !== 'string') {
+      ws.send(
+        JSON.stringify({
+          type: 'error',
+          error: 'Message text is required',
+        })
+      );
+      return;
+    }
+
+    try {
+      const { platform } = message;
+      if (!platform || typeof platform !== 'string') {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: 'Platform is required',
+          })
+        );
+        return;
+      }
+
+      const platformType = platform as Platform;
+      if (!Object.values(Platform).includes(platformType)) {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: 'Unsupported platform for chat message',
+          })
+        );
+        return;
+      }
+
+      // Check rate limit (per stream+platform)
+      const rateLimitKey = `${client.streamId}:${platformType}`;
+      const rateLimit = this.rateLimiter.checkLimit(rateLimitKey);
+
+      if (!rateLimit.allowed) {
+        const resetInSeconds = Math.ceil(rateLimit.resetIn / 1000);
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: `Rate limit exceeded. Please wait ${resetInSeconds} seconds before sending more messages.`,
+            rateLimitExceeded: true,
+            resetIn: rateLimit.resetIn,
+          })
+        );
+        logger.warn('Rate limit exceeded', {
+          streamId: client.streamId,
+          platform: platformType,
+          resetIn: rateLimit.resetIn,
+        });
+        return;
+      }
+
+      // Ensure the platform is configured for this stream
+      const platformStreams = await db.getPlatformStreams(client.streamId);
+      const platformStream = platformStreams.find((ps) => ps.platform === platformType);
+      if (!platformStream) {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: 'Platform not configured for this stream',
+          })
+        );
+        return;
+      }
+
+      const provider = providerRegistry.getProvider(platformType);
+      const tokens = await db.getOAuthTokens(client.communityId, platformType);
+
+      // Send message with retry logic for transient failures
+      const sendResult = await retryWithBackoff(
+        async () => {
+          return await provider.sendChatMessage(
+            platformStream.platformStreamId,
+            text,
+            tokens.tokens
+          );
+        },
+        {
+          maxAttempts: 3,
+          initialDelayMs: 500,
+          maxDelayMs: 5000,
+        }
+      );
+
+      if (sendResult.status === 'unsupported') {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: 'Sending chat messages is not supported for this platform yet',
+          })
+        );
+        return;
+      }
+
+      if (sendResult.status === 'error') {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            error: sendResult.error || 'Failed to send message',
+          })
+        );
+        return;
+      }
+
+      // Create a chat message object to save and broadcast
+      const chatMessage: ChatMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        streamId: client.streamId,
+        platform: platformType,
+        authorId: 'system',
+        authorName: 'You',
+        message: text,
+        timestamp: new Date(),
+      };
+
+      // Save message to database
+      await db.saveChatMessage(chatMessage);
+
+      // Broadcast to all connected clients
+      this.broadcastToStream(client.streamId, {
+        type: 'message',
+        message: chatMessage,
+      });
+
+      // Send success response
+      ws.send(
+        JSON.stringify({
+          type: 'messageSent',
+          success: true,
+          message: chatMessage,
+        })
+      );
+
+      logger.info('Message sent', {
+        streamId: client.streamId,
+        platform: platformType,
+        text,
+      });
+    } catch (error) {
+      logger.error('Send message error', error);
+      ws.send(
+        JSON.stringify({
+          type: 'error',
+          error: 'Failed to send message',
+        })
+      );
+    }
+  }
+
   private startPolling(streamId: string, communityId: string): void {
     const interval = setInterval(() => {
       void this.pollChatMessages(streamId, communityId);
@@ -306,11 +480,14 @@ export class ChatServer {
 
           // Save messages to database and broadcast
           for (const message of messages) {
-            await db.saveChatMessage(message);
+            // Override streamId with our internal streamId (provider uses platformStreamId)
+            const chatMessage = { ...message, streamId };
+
+            await db.saveChatMessage(chatMessage);
 
             this.broadcastToStream(streamId, {
               type: 'message',
-              message,
+              message: chatMessage,
             });
           }
 
@@ -348,6 +525,9 @@ export class ChatServer {
         clearInterval(interval);
       }
       this.pollIntervals.clear();
+
+      // Destroy rate limiter
+      this.rateLimiter.destroy();
 
       // Forcefully terminate all client connections
       for (const client of this.clients.values()) {

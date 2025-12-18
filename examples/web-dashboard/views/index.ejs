@@ -3,39 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Omnistream Dashboard - Multi-Platform Live Streaming</title>
+    <title>OmniStream Dashboard - Multi-Platform Live Streaming</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <header>
-            <h1>🎥 Omnistream Dashboard</h1>
+            <h1>🎥 OmniStream Dashboard</h1>
             <p class="subtitle">Multi-Platform Live Streaming Made Easy</p>
         </header>
 
         <!-- Authentication Section -->
         <div id="auth-section" class="section">
-            <div class="card">
-                <h2>Get Started</h2>
-                <div class="auth-forms">
-                    <div class="form-group">
-                        <h3>Create New Community</h3>
-                        <input type="text" id="community-name" placeholder="Community Name (e.g., Gigaverse Gaming)" />
-                        <button onclick="createCommunity()" class="btn btn-primary">Create Community</button>
-                        <p class="info-text" style="font-size: 0.9em; margin-top: 10px;">
-                            A unique community ID will be generated automatically
+            <div class="auth-container">
+                <div class="auth-card">
+                    <div class="auth-header">
+                        <h2>Welcome to OmniStream</h2>
+                        <p>Multi-platform streaming made simple</p>
+                    </div>
+
+                    <!-- Tab Navigation -->
+                    <div class="auth-tabs">
+                        <button id="tab-user-login" class="tab-btn active" onclick="switchAuthTab('user-login')">Login</button>
+                        <button id="tab-user-register" class="tab-btn" onclick="switchAuthTab('user-register')">Register</button>
+                    </div>
+
+                    <!-- User Login Tab -->
+                    <div id="user-login-form" class="auth-tab-content" style="display: block;">
+                        <div class="form-group">
+                            <label for="login-email" class="form-label">Email</label>
+                            <input type="email" id="login-email" placeholder="you@example.com" onkeypress="if(event.key==='Enter') userLogin()" />
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password" class="form-label">Password</label>
+                            <input type="password" id="login-password" placeholder="Enter your password" onkeypress="if(event.key==='Enter') userLogin()" />
+                        </div>
+                        <button onclick="userLogin()" class="btn btn-primary btn-block">Login</button>
+                        <p class="auth-footer-text">
+                            Don't have an account? <a href="#" onclick="switchAuthTab('user-register'); return false;">Sign up</a>
                         </p>
                     </div>
-                    <div class="form-group">
-                        <h3>Use Existing Community ID</h3>
-                        <input type="text" id="login-communityid" placeholder="Your Community ID (UUID)" />
-                        <button onclick="loginWithCommunityId()" class="btn btn-primary">Login</button>
-                        <p class="info-text" style="font-size: 0.9em; margin-top: 10px;">
-                            Enter your existing community ID to continue
+
+                    <!-- User Register Tab -->
+                    <div id="user-register-form" class="auth-tab-content" style="display: none;">
+                        <div class="form-group">
+                            <label for="register-name" class="form-label">Name</label>
+                            <input type="text" id="register-name" placeholder="Your full name" onkeypress="if(event.key==='Enter') userRegister()" />
+                        </div>
+                        <div class="form-group">
+                            <label for="register-email" class="form-label">Email</label>
+                            <input type="email" id="register-email" placeholder="you@example.com" onkeypress="if(event.key==='Enter') userRegister()" />
+                        </div>
+                        <div class="form-group">
+                            <label for="register-password" class="form-label">Password</label>
+                            <input type="password" id="register-password" placeholder="Min 8 chars, 1 uppercase, 1 number" onkeypress="if(event.key==='Enter') userRegister()" />
+                        </div>
+                        <div class="form-group">
+                            <label for="register-password-confirm" class="form-label">Confirm Password</label>
+                            <input type="password" id="register-password-confirm" placeholder="Re-enter your password" onkeypress="if(event.key==='Enter') userRegister()" />
+                        </div>
+                        <button onclick="userRegister()" class="btn btn-primary btn-block">Create Account</button>
+                        <p class="auth-footer-text">
+                            Already have an account? <a href="#" onclick="switchAuthTab('user-login'); return false;">Login</a>
                         </p>
                     </div>
+
+                    <div id="auth-status" class="status-message"></div>
                 </div>
-                <div id="auth-status" class="status-message"></div>
             </div>
         </div>
 
@@ -52,15 +87,144 @@
             </div>
         </div>
 
-        <!-- Platform OAuth Section -->
-        <div id="platforms-section" class="section" style="display: none;">
+        <!-- User Platform Connections Section -->
+        <div id="user-platforms-section" class="section" style="display: none;">
             <div class="card">
-                <h2>🔗 Connect Streaming Platforms</h2>
-                <p class="info-text">Connect your accounts to stream to multiple platforms simultaneously</p>
-                <div id="platforms-grid" class="platforms-grid">
-                    <!-- Platforms will be loaded dynamically -->
+                <h2>🔗 Connect Your Social Platforms</h2>
+                <p class="info-text">Connect Twitter, Telegram, YouTube, Facebook, and Instagram to manage your social accounts</p>
+
+                <!-- Success/Error Alerts -->
+                <div id="user-platform-success" class="alert alert-success" style="display: none;"></div>
+                <div id="user-platform-error" class="alert alert-error" style="display: none;"></div>
+                <div id="user-platform-loading" class="loading-message" style="display: none;">Loading...</div>
+
+                <div class="user-platforms-grid">
+                    <!-- YouTube Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #FF0000;">▶</div>
+                            <div class="platform-details">
+                                <h3>YouTube</h3>
+                                <p class="platform-description">Connect your YouTube channel</p>
+                                <div id="user-youtube-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-youtube-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-youtube" class="btn btn-primary" onclick="window.userPlatforms.connectUserYouTube()">
+                                    Connect YouTube
+                                </button>
+                                <button id="user-disconnect-youtube" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('youtube')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Twitter Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #1DA1F2;">𝕏</div>
+                            <div class="platform-details">
+                                <h3>Twitter / X</h3>
+                                <p class="platform-description">Connect your Twitter account</p>
+                                <div id="user-twitter-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-twitter-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-twitter" class="btn btn-primary" onclick="window.userPlatforms.connectUserTwitter()">
+                                    Connect Twitter
+                                </button>
+                                <button id="user-disconnect-twitter" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('twitter')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telegram Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #0088cc;">✈</div>
+                            <div class="platform-details">
+                                <h3>Telegram</h3>
+                                <p class="platform-description">Connect your Telegram bot</p>
+                                <div id="user-telegram-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-telegram-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-telegram" class="btn btn-primary" onclick="window.userPlatforms.connectUserTelegram()">
+                                    Connect Telegram
+                                </button>
+                                <button id="user-disconnect-telegram" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('telegram')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Facebook Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #1877F2;">👥</div>
+                            <div class="platform-details">
+                                <h3>Facebook</h3>
+                                <p class="platform-description">Connect your Facebook account</p>
+                                <div id="user-facebook-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-facebook-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-facebook" class="btn btn-primary" onclick="window.userPlatforms.connectUserFacebook()">
+                                    Connect Facebook
+                                </button>
+                                <button id="user-disconnect-facebook" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('facebook')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instagram Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: linear-gradient(135deg, #E1306C 0%, #C13584 100%);">📷</div>
+                            <div class="platform-details">
+                                <h3>Instagram</h3>
+                                <p class="platform-description">Connect your Instagram Business account</p>
+                                <div id="user-instagram-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-instagram-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-instagram" class="btn btn-primary" onclick="window.userPlatforms.connectUserInstagram()">
+                                    Connect Instagram
+                                </button>
+                                <button id="user-disconnect-instagram" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('instagram')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TikTok Platform -->
+                    <div class="platform-connection-card">
+                        <div class="platform-header">
+                            <div class="platform-icon" style="background: #000000;">🎵</div>
+                            <div class="platform-details">
+                                <h3>TikTok Live</h3>
+                                <p class="platform-description">Connect TikTok Live RTMP streaming (streaming only)</p>
+                                <div id="user-tiktok-info" class="platform-info" style="display: none;"></div>
+                            </div>
+                            <div class="platform-actions">
+                                <span id="user-tiktok-status" class="status-badge disconnected">Not Connected</span>
+                                <button id="user-connect-tiktok" class="btn btn-primary" onclick="window.userPlatforms.connectUserTikTok()">
+                                    Connect TikTok
+                                </button>
+                                <button id="user-disconnect-tiktok" class="btn btn-danger" style="display: none;" onclick="window.userPlatforms.disconnectUserPlatform('tiktok')">
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="platform-status" class="status-message"></div>
             </div>
         </div>
 
@@ -68,26 +232,271 @@
         <div id="streams-section" class="section" style="display: none;">
             <div class="card">
                 <h2>📡 Stream Management</h2>
+                <p class="info-text">Create and manage your multi-platform live streams</p>
 
+                <!-- Create Stream Form -->
                 <div class="stream-create">
-                    <h3>Create New Stream</h3>
-                    <input type="text" id="stream-title" placeholder="Stream Title" />
-                    <textarea id="stream-description" placeholder="Stream Description"></textarea>
+                    <h3>✨ Create New Stream</h3>
 
-                    <div class="platform-selection">
-                        <h4>Select Platforms:</h4>
-                        <div id="platform-checkboxes"></div>
+                    <div class="form-group">
+                        <label for="stream-title" class="form-label">Stream Title</label>
+                        <input type="text" id="stream-title" placeholder="e.g., Live Gaming Session, Product Launch, Q&A Session" />
                     </div>
 
-                    <button onclick="createStream()" class="btn btn-success">Create Stream</button>
-                </div>
+                    <div class="form-group">
+                        <label for="stream-description" class="form-label">Stream Description (Optional)</label>
+                        <textarea id="stream-description" placeholder="Describe what your stream is about..."></textarea>
+                    </div>
 
-                <div class="streams-list">
-                    <h3>Your Streams</h3>
-                    <div id="streams-container"></div>
+                    <div class="form-group">
+                        <label class="form-label">🎯 Select Platforms to Stream</label>
+                        <div id="platform-checkboxes" class="platform-checkboxes"></div>
+                    </div>
+
+                    <button onclick="createStream()" class="btn btn-success">
+                        🚀 Create Stream
+                    </button>
                 </div>
 
                 <div id="stream-status" class="status-message"></div>
+
+                <!-- Streams List -->
+                <div class="streams-list">
+                    <h3>🎬 Your Streams</h3>
+                    <div id="streams-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Post Section -->
+        <div id="create-post-section" class="section" style="display: none;">
+            <div class="card">
+                <h2>✍️ Create Post</h2>
+                <p class="info-text">Write once, publish to multiple platforms</p>
+
+                <!-- Success/Error Alerts -->
+                <div id="post-success" class="alert alert-success" style="display: none;"></div>
+                <div id="post-error" class="alert alert-error" style="display: none;"></div>
+                <div id="post-loading" class="loading-message" style="display: none;">Publishing...</div>
+
+                <div class="post-form">
+                    <div class="form-group">
+                        <label for="post-content" class="form-label">Post Content</label>
+                        <textarea id="post-content" placeholder="What's on your mind?" rows="6" maxlength="280"></textarea>
+                        <small class="text-muted" id="char-counter">0 / 280 characters</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="post-media-url" class="form-label">Media URL (Optional)</label>
+                        <input type="url" id="post-media-url" placeholder="https://example.com/image.jpg" />
+                        <small class="text-muted">Direct URL to an image or video</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Select Platforms</label>
+                        <div id="post-platform-checkboxes" class="platform-checkboxes">
+                            <label class="platform-checkbox">
+                                <input type="checkbox" id="post-platform-twitter" value="twitter">
+                                <span>Twitter / X</span>
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" id="post-platform-facebook" value="facebook">
+                                <span>Facebook</span>
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" id="post-platform-telegram" value="telegram">
+                                <span>Telegram</span>
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" id="post-platform-youtube" value="youtube">
+                                <span>YouTube</span>
+                            </label>
+                        </div>
+                        <small class="text-muted">Select at least one platform</small>
+                    </div>
+
+                    <button onclick="publishPost()" class="btn btn-success">
+                        📤 Publish Post
+                    </button>
+                </div>
+
+                <!-- Post Results -->
+                <div id="post-results" class="post-results" style="display: none; margin-top: var(--space-5);">
+                    <h3>Publication Results</h3>
+                    <div id="post-results-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule Event Section -->
+        <div id="schedule-event-section" class="section" style="display: none;">
+            <div class="card">
+                <h2>📅 Schedule Event</h2>
+                <p class="info-text">Schedule streams and posts for future publishing</p>
+
+                <!-- Success/Error Alerts -->
+                <div id="schedule-success" class="alert alert-success" style="display: none;"></div>
+                <div id="schedule-error" class="alert alert-error" style="display: none;"></div>
+                <div id="schedule-loading" class="loading-message" style="display: none;">Scheduling...</div>
+
+                <div class="schedule-form">
+                    <div class="form-group">
+                        <label for="schedule-type" class="form-label">Event Type</label>
+                        <select id="schedule-type" onchange="toggleScheduleFormFields()">
+                            <option value="stream">Live Stream</option>
+                            <option value="post">Post</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="schedule-title" class="form-label">Title</label>
+                        <input type="text" id="schedule-title" placeholder="Event title" />
+                    </div>
+
+                    <div class="form-group" id="schedule-content-group" style="display: none;">
+                        <label for="schedule-content" class="form-label">Post Content</label>
+                        <textarea id="schedule-content" placeholder="What do you want to post?" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group" id="schedule-description-group">
+                        <label for="schedule-description" class="form-label">Description (Optional)</label>
+                        <textarea id="schedule-description" placeholder="Event description" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group" id="schedule-media-group" style="display: none;">
+                        <label for="schedule-media-url" class="form-label">Media URL (Optional)</label>
+                        <input type="url" id="schedule-media-url" placeholder="https://example.com/image.jpg" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="schedule-datetime" class="form-label">Scheduled Date & Time</label>
+                        <input type="datetime-local" id="schedule-datetime" />
+                        <small class="text-muted">Event will be scheduled at this time</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Select Platforms</label>
+                        <div class="platform-checkboxes">
+                            <label class="platform-checkbox">
+                                <input type="checkbox" id="schedule-platform-youtube" value="youtube">
+                                <span>YouTube</span>
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" id="schedule-platform-twitter" value="twitter">
+                                <span>Twitter</span>
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" id="schedule-platform-telegram" value="telegram">
+                                <span>Telegram</span>
+                            </label>
+                            <label class="platform-checkbox">
+                                <input type="checkbox" id="schedule-platform-facebook" value="facebook">
+                                <span>Facebook</span>
+                            </label>
+                        </div>
+                        <small class="text-muted">Select at least one platform</small>
+                    </div>
+
+                    <button onclick="scheduleEvent()" class="btn btn-success">
+                        📅 Schedule Event
+                    </button>
+                </div>
+
+                <!-- Upcoming Events -->
+                <div id="upcoming-events">
+                    <h3>Upcoming Events</h3>
+                    <div id="upcoming-events-list">
+                        <p class="text-muted" id="no-events-message">No scheduled events</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Chat Section -->
+        <div id="live-chat-section" class="section" style="display: none;">
+            <div class="card">
+                <h2>💬 Live Chat</h2>
+                <p class="info-text">Real-time chat from all platforms</p>
+
+                <div class="chat-container">
+                    <!-- Chat Messages Panel -->
+                    <div class="chat-messages-panel">
+                        <div id="chat-messages" class="chat-messages">
+                            <div class="empty-state">
+                                <p>💬</p>
+                                <p>Waiting for chat messages...</p>
+                                <p class="info-text">Messages will appear here in real-time</p>
+                            </div>
+                        </div>
+
+                        <!-- Send Message Input -->
+                        <div class="chat-input">
+                            <select id="chat-send-platform" aria-label="Select platform to reply">
+                                <option value="">Select platform</option>
+                            </select>
+                            <textarea id="chat-message-input" placeholder="Type your message..." rows="2" onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }"></textarea>
+                            <button onclick="sendChatMessage()" class="btn btn-primary">Send</button>
+                        </div>
+                    </div>
+
+                    <!-- Chat Sidebar -->
+                    <div class="chat-sidebar">
+                        <!-- Platform Filters -->
+                        <div>
+                            <h4>Platform Filters</h4>
+                            <div class="platform-filters">
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" id="filter-youtube" checked onchange="togglePlatformFilter('youtube')">
+                                    <span class="platform-badge youtube">YouTube</span>
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" id="filter-telegram" checked onchange="togglePlatformFilter('telegram')">
+                                    <span class="platform-badge telegram">Telegram</span>
+                                </label>
+                                <label class="filter-checkbox">
+                                    <input type="checkbox" id="filter-facebook" checked onchange="togglePlatformFilter('facebook')">
+                                    <span class="platform-badge facebook">Facebook</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Stats -->
+                        <div>
+                            <h4>Statistics</h4>
+                            <div class="chat-stats-detail">
+                                <div class="stat-item">
+                                    <span class="stat-label">YouTube:</span>
+                                    <span id="stat-youtube" class="stat-value">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Telegram:</span>
+                                    <span id="stat-telegram" class="stat-value">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Facebook:</span>
+                                    <span id="stat-facebook" class="stat-value">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div>
+                            <h4>Actions</h4>
+                            <button onclick="clearChatMessages()" class="btn btn-secondary btn-small">
+                                Clear Chat
+                            </button>
+                            <button onclick="exportChatMessages()" class="btn btn-secondary btn-small">
+                                Export Chat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connection Indicator -->
+                <div style="margin-top: var(--space-4); display: flex; align-items: center; gap: var(--space-2);">
+                    <span id="chat-connection-indicator" class="status-dot"></span>
+                    <span id="chat-message-count">0 messages</span>
+                </div>
             </div>
         </div>
 
@@ -129,6 +538,95 @@
         </div>
     </div>
 
+    <!-- Telegram Connection Modal -->
+    <div id="user-telegram-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Connect Telegram Bot</h3>
+                <button class="modal-close" onclick="window.userPlatforms.closeUserTelegramModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2">
+                    To connect Telegram, you need to create a bot and add it to your channel as an administrator.
+                </p>
+                <ol class="instruction-list">
+                    <li>Message <a href="https://t.me/BotFather" target="_blank">@BotFather</a> on Telegram</li>
+                    <li>Send <code>/newbot</code> and follow the instructions</li>
+                    <li>Copy your bot token</li>
+                    <li>Add your bot to your channel as an administrator</li>
+                    <li>Get your channel ID (starts with -100...)</li>
+                </ol>
+
+                <div class="form-group">
+                    <label class="form-label" for="user-telegram-bot-token">Bot Token</label>
+                    <input type="text" id="user-telegram-bot-token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="user-telegram-channel-id">Channel ID</label>
+                    <input type="text" id="user-telegram-channel-id" placeholder="-1001234567890" required>
+                    <small class="text-muted">Must start with a minus sign (e.g., -1001234567890)</small>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="window.userPlatforms.closeUserTelegramModal()">
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary" onclick="window.userPlatforms.submitUserTelegramConnection()">
+                        Connect
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TikTok RTMP Connection Modal -->
+    <div id="user-tiktok-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Connect TikTok Live RTMP</h3>
+                <button class="modal-close" onclick="window.userPlatforms.closeUserTikTokModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2">
+                    TikTok Live uses RTMP streaming. Get your stream key from the TikTok Live app.
+                </p>
+                <ol class="instruction-list">
+                    <li>Open TikTok app and go to Live settings</li>
+                    <li>Enable "Go Live" and select "Game" or "Screen Share" mode</li>
+                    <li>Copy your Server URL and Stream Key</li>
+                    <li>Paste them below to connect</li>
+                </ol>
+
+                <div class="form-group">
+                    <label class="form-label" for="user-tiktok-rtmp-server">RTMP Server URL</label>
+                    <input type="text" id="user-tiktok-rtmp-server" placeholder="rtmp://push.tiktok.com/live" value="rtmp://push.tiktok.com/live" required>
+                    <small class="text-muted">Default: rtmp://push.tiktok.com/live (check TikTok app for updates)</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="user-tiktok-stream-key">Stream Key</label>
+                    <input type="password" id="user-tiktok-stream-key" placeholder="Your TikTok stream key" required>
+                    <small class="text-muted">Get this from TikTok Live app settings</small>
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>Note:</strong> TikTok Live supports RTMP streaming only. Posting and scheduling are not available.
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="window.userPlatforms.closeUserTikTokModal()">
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary" onclick="window.userPlatforms.submitUserTikTokConnection()">
+                        Connect
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/app.js"></script>
+    <script src="/js/user-platforms.js"></script>
 </body>
 </html>

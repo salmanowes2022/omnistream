@@ -1,0 +1,150 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  socialAccounts SocialAccount[]
+  communities    Community[]
+
+  @@map("users")
+}
+
+model SocialAccount {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform     String    // youtube | telegram | x | facebook | tiktok
+  accessToken  String    // Encrypted
+  refreshToken String?   // Encrypted (optional)
+  expiresAt    DateTime?
+  extra        String?   // JSON-encoded extra data (channelId, username, etc.)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, platform])
+  @@index([userId])
+  @@map("social_accounts")
+}
+
+model Community {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tokens    OAuthToken[]
+  streams   StreamConfig[]
+
+  @@index([userId])
+  @@map("communities")
+}
+
+model OAuthToken {
+  id          String   @id @default(uuid())
+  platform    String
+  tokens      String   // JSON-encoded for SQLite
+  updatedAt   DateTime @default(now())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, platform])
+  @@index([communityId])
+  @@map("oauth_tokens")
+}
+
+model StreamConfig {
+  id                 String          @id @default(uuid())
+  communityId        String
+  community          Community       @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  rtmpUrl            String
+  rtmpKey            String
+  platforms          String          // JSON-encoded array for SQLite
+  scheduledStartTime DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  platformStreams    PlatformStream[]
+  chatMessages       ChatMessage[]
+
+  @@index([communityId])
+  @@map("streams")
+}
+
+model PlatformStream {
+  id               String        @id @default(uuid())
+  streamId         String
+  stream           StreamConfig  @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  platform         String
+  platformStreamId String?
+  status           String
+  viewerCount      Int?
+  platformUrl      String?
+  rtmpUrl          String?
+  streamKey        String?
+  liveUrl          String?
+  metadata         String?
+  error            String?
+  updatedAt        DateTime @default(now())
+
+  @@unique([streamId, platform])
+  @@index([streamId])
+  @@index([status])
+  @@map("platform_streams")
+}
+
+model ChatMessage {
+  id                String       @id @default(uuid())
+  streamId          String
+  stream            StreamConfig @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  platform          String
+  platformMessageId String?
+  authorId          String
+  authorName        String
+  authorImageUrl    String?
+  message           String
+  timestamp         DateTime
+  metadata          String?      // JSON-encoded for SQLite
+  createdAt         DateTime @default(now())
+
+  @@index([streamId])
+  @@index([timestamp])
+  @@index([streamId, timestamp])
+  @@map("chat_messages")
+}
+
+model ScheduledJob {
+  id          String   @id @default(cuid())
+  userId      String
+  platforms   String   // JSON-encoded array for SQLite
+  type        String   // "stream" | "post"
+  title       String?
+  description String?
+  scheduledAt DateTime
+  payload     String   // JSON-encoded data
+  status      String   // "pending" | "running" | "done" | "failed"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status, scheduledAt])
+  @@map("scheduled_jobs")
+}

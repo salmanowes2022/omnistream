@@ -23,6 +23,14 @@ app.get('/', (req, res) => {
   });
 });
 
+app.get('/chat', (req, res) => {
+  res.render('chat', {
+    omnistreamUrl: OMNISTREAM_API_URL,
+    communityId: req.query.communityId || '',
+    streamId: req.query.streamId || '',
+  });
+});
+
 // API proxy endpoints to avoid CORS issues
 
 // Create a new community (registration)
@@ -57,8 +65,17 @@ app.get('/api/community/:communityId', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Community ID required' });
     }
 
+    // Check if request has auth token
+    const authHeader = req.headers.authorization;
+    const headers = {};
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+
     // List all communities and find the one with matching ID
-    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/communities`);
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/communities`, {
+      headers,
+    });
     const communities = response.data.data || [];
     const community = communities.find((c) => c.id === communityId);
 
@@ -71,6 +88,231 @@ app.get('/api/community/:communityId', async (req, res) => {
     res
       .status(error.response?.status || 500)
       .json(error.response?.data || { error: 'Failed to fetch community', success: false });
+  }
+});
+
+// User Platforms proxy endpoints (Twitter, Telegram, YouTube)
+
+// Get all connected user platforms
+app.get('/api/v1/platforms', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/platforms`, {
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch platforms', success: false });
+  }
+});
+
+// Connect Twitter
+app.post('/api/v1/platforms/twitter/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/twitter/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect Twitter', success: false });
+  }
+});
+
+// Connect Telegram
+app.post('/api/v1/platforms/telegram/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/telegram/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect Telegram', success: false });
+  }
+});
+
+// Connect YouTube
+app.post('/api/v1/platforms/youtube/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/youtube/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect YouTube', success: false });
+  }
+});
+
+// Connect Instagram
+app.post('/api/v1/platforms/instagram/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/instagram/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect Instagram', success: false });
+  }
+});
+
+// Disconnect platform
+app.delete('/api/v1/platforms/:platform', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.delete(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/${req.params.platform}`,
+      {
+        headers: {
+          Authorization: authHeader,
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to disconnect platform', success: false });
+  }
+});
+
+// Check platform status
+app.get('/api/v1/platforms/:platform/status', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/${req.params.platform}/status`,
+      {
+        headers: {
+          Authorization: authHeader,
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to check platform status', success: false });
+  }
+});
+
+// User authentication proxy endpoints
+
+// User registration
+app.post('/api/v1/user-auth/register', async (req, res) => {
+  try {
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/user-auth/register`, req.body);
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Registration failed', success: false });
+  }
+});
+
+// User login
+app.post('/api/v1/user-auth/login', async (req, res) => {
+  try {
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/user-auth/login`, req.body);
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Login failed', success: false });
+  }
+});
+
+// Get current user
+app.get('/api/v1/user-auth/me', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/user-auth/me`, {
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to get user info', success: false });
+  }
+});
+
+// List user's communities
+app.get('/api/v1/communities', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/communities`, {
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch communities', success: false });
+  }
+});
+
+// Create community (authenticated)
+app.post('/api/v1/communities', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/communities`, req.body, {
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to create community', success: false });
   }
 });
 
@@ -162,6 +404,50 @@ app.get('/api/auth/:platform/authorize', async (req, res) => {
   }
 });
 
+// Get OAuth status for a platform
+app.get('/api/auth/:platform/status', async (req, res) => {
+  try {
+    const communityId = req.query.communityId;
+    if (!communityId) {
+      return res.status(400).json({ success: false, error: 'Community ID required' });
+    }
+
+    const response = await axios.get(
+      `${OMNISTREAM_API_URL}/api/v1/auth/${req.params.platform}/status`,
+      {
+        params: { communityId },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to get auth status', success: false });
+  }
+});
+
+// Revoke/disconnect OAuth tokens for a platform
+app.delete('/api/auth/:platform', async (req, res) => {
+  try {
+    const communityId = req.query.communityId;
+    if (!communityId) {
+      return res.status(400).json({ success: false, error: 'Community ID required' });
+    }
+
+    const response = await axios.delete(
+      `${OMNISTREAM_API_URL}/api/v1/auth/${req.params.platform}`,
+      {
+        params: { communityId },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to disconnect platform', success: false });
+  }
+});
+
 app.post('/api/streams', async (req, res) => {
   try {
     const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/streams`, req.body);
@@ -186,6 +472,19 @@ app.get('/api/streams', async (req, res) => {
   }
 });
 
+app.get('/api/streams/community/:communityId', async (req, res) => {
+  try {
+    const response = await axios.get(
+      `${OMNISTREAM_API_URL}/api/v1/streams/community/${req.params.communityId}`
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch streams' });
+  }
+});
+
 app.get('/api/streams/:streamId', async (req, res) => {
   try {
     const response = await axios.get(
@@ -199,6 +498,22 @@ app.get('/api/streams/:streamId', async (req, res) => {
     res
       .status(error.response?.status || 500)
       .json(error.response?.data || { error: 'Failed to fetch stream' });
+  }
+});
+
+app.get('/api/streams/:streamId/status', async (req, res) => {
+  try {
+    const response = await axios.get(
+      `${OMNISTREAM_API_URL}/api/v1/streams/${req.params.streamId}/status`,
+      {
+        params: { communityId: req.query.communityId },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch stream status' });
   }
 });
 
@@ -246,13 +561,112 @@ app.delete('/api/streams/:streamId', async (req, res) => {
   }
 });
 
+// Facebook platform proxy
+app.post('/api/v1/platforms/facebook/connect', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(
+      `${OMNISTREAM_API_URL}/api/v1/platforms/facebook/connect`,
+      req.body,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to connect Facebook', success: false });
+  }
+});
+
+// Posts proxy endpoints
+app.post('/api/v1/posts', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/posts`, req.body, {
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to create post', success: false });
+  }
+});
+
+// Schedule proxy endpoints
+app.post('/api/v1/schedule', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.post(`${OMNISTREAM_API_URL}/api/v1/schedule`, req.body, {
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to schedule event', success: false });
+  }
+});
+
+app.get('/api/v1/schedule', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/schedule`, {
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch scheduled events', success: false });
+  }
+});
+
 // OAuth callback handler
 app.get('/oauth/callback', (req, res) => {
   const { platform, code, state } = req.query;
   res.render('oauth-callback', { platform, code, state });
 });
 
+// Chat history proxy endpoint
+app.get('/api/v1/chat/:streamId', async (req, res) => {
+  try {
+    const { streamId } = req.params;
+    const response = await axios.get(`${OMNISTREAM_API_URL}/api/v1/chat/${streamId}`);
+    res.json(response.data);
+  } catch (error) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { error: 'Failed to fetch chat history', success: false });
+  }
+});
+
+// Debug page
+app.get('/debug', (req, res) => {
+  res.render('debug');
+});
+
+// Chat page
+app.get('/chat', (req, res) => {
+  res.render('chat');
+});
+
 app.listen(PORT, () => {
   console.log(`🌐 Omnistream Web Dashboard running at http://localhost:${PORT}`);
   console.log(`📡 Connected to Omnistream API at ${OMNISTREAM_API_URL}`);
+  console.log(`🔍 Debug page: http://localhost:${PORT}/debug`);
+  console.log(`💬 Chat page: http://localhost:${PORT}/chat`);
 });

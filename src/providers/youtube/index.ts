@@ -17,6 +17,47 @@ import { PlatformError, UnsupportedFeatureError } from '../../core/errors.js';
 import { config } from '../../utils/config.js';
 import { logger } from '../../utils/logger.js';
 
+interface AxiosLikeError {
+  response?: {
+    data?: {
+      error?: { message?: string; errors?: Array<{ message?: string }> } | string;
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
+const parseYouTubeError = (error: unknown): string => {
+  const err = error as AxiosLikeError;
+  const responseData = err.response?.data as { error?: unknown; message?: string } | undefined;
+  const apiErrorObj = responseData?.error;
+
+  let apiMessage: string | undefined;
+  if (typeof apiErrorObj === 'string') {
+    apiMessage = apiErrorObj;
+  } else if (apiErrorObj && typeof apiErrorObj === 'object') {
+    const errorObj = apiErrorObj as Record<string, unknown>;
+    apiMessage =
+      (errorObj.message as string) ||
+      (Array.isArray(errorObj.errors)
+        ? ((errorObj.errors[0] as Record<string, unknown>)?.message as string)
+        : undefined);
+  }
+
+  const message = apiMessage || responseData?.message || err.message;
+  if (message) {
+    return message;
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (err.response?.status) {
+    return `HTTP ${err.response.status}`;
+  }
+  return 'Unknown YouTube error';
+};
+
 export class YouTubeProvider implements StreamProvider {
   readonly platform = Platform.YOUTUBE;
 
@@ -30,7 +71,7 @@ export class YouTubeProvider implements StreamProvider {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope:
-        'https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/youtube.readonly',
+        'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.force-ssl',
       access_type: 'offline',
       prompt: 'consent',
       state: communityId,
@@ -155,10 +196,16 @@ export class YouTubeProvider implements StreamProvider {
         },
       });
 
+      // Extract RTMP ingestion info from the stream response
+      const ingestionInfo = streamResponse.data.cdn?.ingestionInfo;
+      const rtmpUrl = ingestionInfo?.ingestionAddress;
+      const streamKey = ingestionInfo?.streamName;
+
       logger.info('YouTube stream created', {
         communityId,
         broadcastId,
         streamId,
+        rtmpUrl,
       });
 
       return {
@@ -166,10 +213,17 @@ export class YouTubeProvider implements StreamProvider {
         platformStreamId: broadcastId,
         streamUrl: `https://www.youtube.com/watch?v=${broadcastId}`,
         status: StreamStatus.SCHEDULED,
+        rtmpUrl,
+        streamKey,
+        metadata: {
+          youtubeStreamId: streamId,
+          broadcastId,
+        },
       };
     } catch (error) {
-      logger.error('YouTube stream creation failed', error);
-      throw new PlatformError('YouTube', 'Failed to create stream', 500, error);
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube stream creation failed', { error: reason });
+      throw new PlatformError('YouTube', `Failed to create stream: ${reason}`, 500, error);
     }
   }
 
@@ -186,15 +240,19 @@ export class YouTubeProvider implements StreamProvider {
 
       logger.info('YouTube stream started', { platformStreamId });
 
+      const liveUrl = `https://www.youtube.com/watch?v=${platformStreamId}`;
+
       return {
         platform: Platform.YOUTUBE,
         platformStreamId,
-        streamUrl: `https://www.youtube.com/watch?v=${platformStreamId}`,
+        streamUrl: liveUrl,
+        liveUrl,
         status: StreamStatus.LIVE,
       };
     } catch (error) {
-      logger.error('YouTube stream start failed', error);
-      throw new PlatformError('YouTube', 'Failed to start stream', 500, error);
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube stream start failed', { error: reason });
+      throw new PlatformError('YouTube', `Failed to start stream: ${reason}`, 500, error);
     }
   }
 
@@ -217,8 +275,9 @@ export class YouTubeProvider implements StreamProvider {
         status: StreamStatus.ENDED,
       };
     } catch (error) {
-      logger.error('YouTube stream stop failed', error);
-      throw new PlatformError('YouTube', 'Failed to stop stream', 500, error);
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube stream stop failed', { error: reason });
+      throw new PlatformError('YouTube', `Failed to stop stream: ${reason}`, 500, error);
     }
   }
 
@@ -256,18 +315,22 @@ export class YouTubeProvider implements StreamProvider {
           status = StreamStatus.IDLE;
       }
 
+      const watchUrl = `https://www.youtube.com/watch?v=${platformStreamId}`;
+
       return {
         platform: Platform.YOUTUBE,
         platformStreamId,
-        streamUrl: `https://www.youtube.com/watch?v=${platformStreamId}`,
+        streamUrl: watchUrl,
+        liveUrl: status === StreamStatus.LIVE ? watchUrl : undefined,
         status,
         viewerCount: broadcast.statistics?.concurrentViewers
           ? parseInt(broadcast.statistics.concurrentViewers, 10)
           : undefined,
       };
     } catch (error) {
-      logger.error('YouTube stream status check failed', error);
-      throw new PlatformError('YouTube', 'Failed to get stream status', 500, error);
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube stream status check failed', { error: reason });
+      throw new PlatformError('YouTube', `Failed to get stream status: ${reason}`, 500, error);
     }
   }
 
@@ -292,6 +355,10 @@ export class YouTubeProvider implements StreamProvider {
 
       const liveChatId = broadcastResponse.data.items[0].snippet.liveChatId;
       if (!liveChatId) {
+        logger.warn('YouTube broadcast has no liveChatId - stream may not be live yet', {
+          platformStreamId,
+          broadcastStatus: broadcastResponse.data.items[0].status,
+        });
         return [];
       }
 
@@ -324,6 +391,12 @@ export class YouTubeProvider implements StreamProvider {
         });
       }
 
+      logger.info('YouTube chat messages fetched', {
+        platformStreamId,
+        liveChatId,
+        count: messages.length,
+      });
+
       return messages;
     } catch (error) {
       logger.error('YouTube chat messages fetch failed', error);
@@ -339,6 +412,59 @@ export class YouTubeProvider implements StreamProvider {
     // YouTube doesn't have a native "pin" or "highlight" feature via API
     // This would need to be implemented through Super Chat or other mechanisms
     throw new UnsupportedFeatureError('YouTube', 'message highlighting');
+  }
+
+  /**
+   * Send a live chat message to YouTube
+   * YouTube requires the liveChatId (retrieved from the broadcast)
+   */
+  async sendChatMessage(
+    platformStreamId: string,
+    text: string,
+    tokens: OAuthToken
+  ): Promise<{ status: 'success' | 'error' | 'unsupported'; error?: string }> {
+    try {
+      // Look up liveChatId for this broadcast
+      const broadcastResponse = await axios.get(`${this.YOUTUBE_API_BASE}/liveBroadcasts`, {
+        headers: { Authorization: `Bearer ${tokens.accessToken}` },
+        params: {
+          part: 'snippet',
+          id: platformStreamId,
+        },
+      });
+
+      const broadcast = broadcastResponse.data.items?.[0];
+      const liveChatId = broadcast?.snippet?.liveChatId;
+      if (!liveChatId) {
+        const error = 'Live chat is not available for this broadcast yet (no liveChatId).';
+        logger.warn('YouTube sendChatMessage failed: missing liveChatId', {
+          platformStreamId,
+          broadcastStatus: broadcast?.status,
+        });
+        return { status: 'error', error };
+      }
+
+      await axios.post(
+        `${this.YOUTUBE_API_BASE}/liveChat/messages`,
+        {
+          snippet: {
+            liveChatId,
+            type: 'textMessageEvent',
+            textMessageDetails: { messageText: text },
+          },
+        },
+        {
+          headers: { Authorization: `Bearer ${tokens.accessToken}` },
+          params: { part: 'snippet' },
+        }
+      );
+
+      return { status: 'success' };
+    } catch (error) {
+      const reason = parseYouTubeError(error);
+      logger.error('YouTube sendChatMessage failed', { error: reason });
+      return { status: 'error', error: reason };
+    }
   }
 }
 

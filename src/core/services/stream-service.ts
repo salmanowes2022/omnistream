@@ -8,7 +8,66 @@ import { providerRegistry } from '../../providers/index.js';
 import { logger } from '../../utils/logger.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 
+type HttpErrorItem = { message?: string };
+type HttpErrorData = { error?: HttpErrorItem | HttpErrorItem[] | string; message?: string };
+type HttpErrorLike = { response?: { data?: HttpErrorData; status?: number }; message?: string };
+
+const isHttpErrorLike = (err: unknown): err is HttpErrorLike => {
+  if (!err || typeof err !== 'object') return false;
+  const maybeResponse = (err as { response?: unknown }).response;
+  return !!maybeResponse && typeof maybeResponse === 'object';
+};
+
+const isHttpErrorData = (data: unknown): data is HttpErrorData =>
+  !!data && typeof data === 'object' && ('error' in data || 'message' in data);
+
+const extractApiMessage = (data?: HttpErrorData): string | undefined => {
+  if (!data) return undefined;
+  if (typeof data.error === 'string') {
+    return data.error;
+  }
+  if (Array.isArray(data.error)) {
+    return data.error.find((e) => e?.message)?.message;
+  }
+  if (data.error?.message) {
+    return data.error.message;
+  }
+  return data.message;
+};
+
+const toErrorMessage = (err: unknown): string => {
+  if (isHttpErrorLike(err)) {
+    const apiData = isHttpErrorData(err.response?.data) ? err.response?.data : undefined;
+    const apiMsg = extractApiMessage(apiData);
+    if (apiMsg) {
+      return apiMsg;
+    }
+    if (err.response?.status) {
+      return `HTTP ${err.response.status}`;
+    }
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  return 'Unknown error';
+};
+
 export class StreamService {
+  private mergePlatformStream(existing: PlatformStream, updated: PlatformStream): PlatformStream {
+    return {
+      ...existing,
+      ...updated,
+      streamUrl: updated.streamUrl ?? existing.streamUrl,
+      rtmpUrl: updated.rtmpUrl ?? existing.rtmpUrl,
+      streamKey: updated.streamKey ?? existing.streamKey,
+      liveUrl: updated.liveUrl ?? updated.streamUrl ?? existing.liveUrl,
+      metadata: updated.metadata ?? existing.metadata,
+    };
+  }
+
   /**
    * Create a new multi-platform stream
    */
@@ -60,13 +119,16 @@ export class StreamService {
         });
       } catch (error) {
         logger.error(`Failed to create stream on ${platform}`, error);
-        // Continue with other platforms (graceful degradation)
-        platformStreams.push({
+        // Persist the failure so UI can surface it
+        const errorMessage = toErrorMessage(error);
+        const failed: PlatformStream = {
           platform,
           platformStreamId: '',
           status: StreamStatus.ERROR,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+          error: errorMessage,
+        };
+        await db.savePlatformStream(stream.id, failed);
+        platformStreams.push(failed);
       }
     }
 
@@ -76,7 +138,10 @@ export class StreamService {
   /**
    * Start a stream on all platforms
    */
-  async startStream(streamId: string, communityId: string): Promise<PlatformStream[]> {
+  async startStream(
+    streamId: string,
+    communityId: string
+  ): Promise<{ stream: StreamConfig; platformStreams: PlatformStream[] }> {
     const stream = await db.getStream(streamId);
 
     // Verify ownership
@@ -89,12 +154,36 @@ export class StreamService {
 
     for (const platformStream of platformStreams) {
       try {
+        if (!platformStream.platformStreamId) {
+          const missingId = {
+            ...platformStream,
+            status: StreamStatus.ERROR,
+            error:
+              platformStream.error ||
+              'Platform stream not created yet. Please recreate the stream.',
+          };
+          await db.savePlatformStream(streamId, missingId);
+          results.push(missingId);
+          continue;
+        }
+
+        // Mark as starting for UI feedback
+        const startingState = this.mergePlatformStream(platformStream, {
+          platform: platformStream.platform,
+          platformStreamId: platformStream.platformStreamId,
+
+          status: StreamStatus.STARTING,
+        });
+        await db.savePlatformStream(streamId, startingState);
+
         const provider = providerRegistry.getProvider(platformStream.platform);
         const tokens = await db.getOAuthTokens(communityId, platformStream.platform);
 
         const updated = await provider.startStream(platformStream.platformStreamId, tokens.tokens);
-        await db.savePlatformStream(streamId, updated);
-        results.push(updated);
+        const merged = this.mergePlatformStream(startingState, updated);
+
+        await db.savePlatformStream(streamId, merged);
+        results.push(merged);
 
         logger.info('Platform stream started', {
           streamId,
@@ -102,21 +191,27 @@ export class StreamService {
         });
       } catch (error) {
         logger.error(`Failed to start stream on ${platformStream.platform}`, error);
-        results.push({
+        const errorMessage = toErrorMessage(error);
+        const errored = {
           ...platformStream,
           status: StreamStatus.ERROR,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+          error: errorMessage,
+        };
+        await db.savePlatformStream(streamId, errored);
+        results.push(errored);
       }
     }
 
-    return results;
+    return { stream, platformStreams: results };
   }
 
   /**
    * Stop a stream on all platforms
    */
-  async stopStream(streamId: string, communityId: string): Promise<PlatformStream[]> {
+  async stopStream(
+    streamId: string,
+    communityId: string
+  ): Promise<{ stream: StreamConfig; platformStreams: PlatformStream[] }> {
     const stream = await db.getStream(streamId);
 
     if (stream.communityId !== communityId) {
@@ -131,9 +226,23 @@ export class StreamService {
         const provider = providerRegistry.getProvider(platformStream.platform);
         const tokens = await db.getOAuthTokens(communityId, platformStream.platform);
 
+        if (!platformStream.platformStreamId) {
+          const missingId = {
+            ...platformStream,
+            status: StreamStatus.ERROR,
+            error:
+              platformStream.error ||
+              'Platform stream not created yet. Please recreate the stream.',
+          };
+          await db.savePlatformStream(streamId, missingId);
+          results.push(missingId);
+          continue;
+        }
+
         const updated = await provider.stopStream(platformStream.platformStreamId, tokens.tokens);
-        await db.savePlatformStream(streamId, updated);
-        results.push(updated);
+        const merged = this.mergePlatformStream(platformStream, updated);
+        await db.savePlatformStream(streamId, merged);
+        results.push(merged);
 
         logger.info('Platform stream stopped', {
           streamId,
@@ -141,15 +250,18 @@ export class StreamService {
         });
       } catch (error) {
         logger.error(`Failed to stop stream on ${platformStream.platform}`, error);
-        results.push({
+        const errorMessage = toErrorMessage(error);
+        const errored = {
           ...platformStream,
           status: StreamStatus.ERROR,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+          error: errorMessage,
+        };
+        await db.savePlatformStream(streamId, errored);
+        results.push(errored);
       }
     }
 
-    return results;
+    return { stream, platformStreams: results };
   }
 
   /**
@@ -173,19 +285,36 @@ export class StreamService {
         const provider = providerRegistry.getProvider(platformStream.platform);
         const tokens = await db.getOAuthTokens(communityId, platformStream.platform);
 
+        if (!platformStream.platformStreamId) {
+          const missingId = {
+            ...platformStream,
+            status: StreamStatus.ERROR,
+            error:
+              platformStream.error ||
+              'Platform stream not created yet. Please recreate the stream.',
+          };
+          await db.savePlatformStream(streamId, missingId);
+          results.push(missingId);
+          continue;
+        }
+
         const updated = await provider.getStreamStatus(
           platformStream.platformStreamId,
           tokens.tokens
         );
-        await db.savePlatformStream(streamId, updated);
-        results.push(updated);
+        const merged = this.mergePlatformStream(platformStream, updated);
+        await db.savePlatformStream(streamId, merged);
+        results.push(merged);
       } catch (error) {
         logger.error(`Failed to get stream status on ${platformStream.platform}`, error);
-        results.push({
+        const errorMessage = toErrorMessage(error);
+        const errored = {
           ...platformStream,
           status: StreamStatus.ERROR,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+          error: errorMessage,
+        };
+        await db.savePlatformStream(streamId, errored);
+        results.push(errored);
       }
     }
 
@@ -198,6 +327,10 @@ export class StreamService {
   async listStreams(communityId: string): Promise<StreamConfig[]> {
     await db.getCommunityById(communityId);
     return db.listStreamsByCommunity(communityId);
+  }
+
+  getStreamByRtmpKey(rtmpKey: string): Promise<StreamConfig | null> {
+    return db.getStreamByRtmpKey(rtmpKey);
   }
 
   /**

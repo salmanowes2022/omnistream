@@ -15,8 +15,12 @@ import { ChatServer } from './websocket/chat-server.js';
 
 // Import routes
 import communitiesRouter from './api/routes/communities.js';
-import authRouter from './api/routes/auth.js';
 import streamsRouter from './api/routes/streams.js';
+import userAuthRouter from './api/routes/user-auth.js';
+import platformsRouter from './api/routes/platforms.js';
+import postsRouter from './api/routes/posts.js';
+import scheduleRouter from './api/routes/schedule.js';
+import chatRouter from './api/routes/chat.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -43,9 +47,13 @@ app.get('/dashboard', (_req, res) => {
 });
 
 // API routes
+app.use('/api/v1/user-auth', userAuthRouter);
 app.use('/api/v1/communities', communitiesRouter);
-app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/streams', streamsRouter);
+app.use('/api/v1/platforms', platformsRouter);
+app.use('/api/v1/posts', postsRouter);
+app.use('/api/v1/schedule', scheduleRouter);
+app.use('/api/v1/chat', chatRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);
@@ -55,6 +63,10 @@ OAuthConfigValidator.validateAndLog();
 
 // Initialize WebSocket chat server
 const chatServer = new ChatServer(server);
+
+// Start background scheduler worker
+import { startScheduler } from './workers/scheduler.js';
+startScheduler();
 
 // Start server
 server.listen(config.port, () => {

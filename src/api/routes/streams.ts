@@ -62,9 +62,19 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const communityId = req.query.communityId as string;
+    const rtmpKey = req.query.rtmpKey as string;
 
-    if (!communityId) {
-      throw new ValidationError('communityId query parameter is required');
+    if (!communityId && !rtmpKey) {
+      throw new ValidationError('communityId or rtmpKey query parameter is required');
+    }
+
+    if (rtmpKey) {
+      const stream = await streamService.getStreamByRtmpKey(rtmpKey);
+      res.json({
+        success: true,
+        data: stream ? [stream] : [],
+      });
+      return;
     }
 
     const streams = await streamService.listStreams(communityId);
@@ -82,6 +92,26 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
  * GET /api/v1/streams/:streamId
  * Get stream status
  */
+router.get('/:streamId/status', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { streamId } = req.params;
+    const communityId = req.query.communityId as string;
+
+    if (!communityId) {
+      throw new ValidationError('communityId query parameter is required');
+    }
+
+    const result = await streamService.getStreamStatus(streamId, communityId);
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/:streamId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { streamId } = req.params;
@@ -109,17 +139,22 @@ router.get('/:streamId', async (req: Request, res: Response, next: NextFunction)
 router.post('/:streamId/start', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { streamId } = req.params;
-    const { communityId } = req.body;
+    const communityId =
+      (req.body && (req.body as Record<string, unknown>).communityId) ||
+      (req.query.communityId as string);
 
     if (!communityId) {
       throw new ValidationError('communityId is required in request body');
     }
 
-    const platformStreams = await streamService.startStream(streamId, communityId);
+    const { stream, platformStreams } = await streamService.startStream(streamId, communityId);
 
     res.json({
       success: true,
-      data: platformStreams,
+      data: {
+        stream,
+        platformStreams,
+      },
     });
   } catch (error) {
     next(error);
@@ -133,17 +168,22 @@ router.post('/:streamId/start', async (req: Request, res: Response, next: NextFu
 router.post('/:streamId/stop', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { streamId } = req.params;
-    const { communityId } = req.body;
+    const communityId =
+      (req.body && (req.body as Record<string, unknown>).communityId) ||
+      (req.query.communityId as string);
 
     if (!communityId) {
       throw new ValidationError('communityId is required in request body');
     }
 
-    const platformStreams = await streamService.stopStream(streamId, communityId);
+    const { stream, platformStreams } = await streamService.stopStream(streamId, communityId);
 
     res.json({
       success: true,
-      data: platformStreams,
+      data: {
+        stream,
+        platformStreams,
+      },
     });
   } catch (error) {
     next(error);

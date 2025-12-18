@@ -76,10 +76,8 @@ export class InstagramProvider implements StreamProvider {
     _tokens: OAuthToken,
     _since?: Date
   ): Promise<ChatMessage[]> {
-    throw new UnsupportedFeatureError(
-      'Instagram',
-      'Chat messages - Instagram does not provide an official live streaming API'
-    );
+    // Return empty array instead of throwing error for unsupported chat
+    return [];
   }
 
   async highlightMessage(
@@ -88,6 +86,13 @@ export class InstagramProvider implements StreamProvider {
     _tokens: OAuthToken
   ): Promise<boolean> {
     throw new UnsupportedFeatureError('Instagram', 'message highlighting');
+  }
+
+  async sendChatMessage(): Promise<{
+    status: 'success' | 'error' | 'unsupported';
+    error?: string;
+  }> {
+    return { status: 'unsupported', error: 'Instagram chat messages are not supported.' };
   }
 }
 

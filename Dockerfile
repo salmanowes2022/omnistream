@@ -10,8 +10,12 @@ COPY tsconfig.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code
+# Copy source code and Prisma schema
 COPY src ./src
+COPY prisma ./prisma
+
+# Generate Prisma Client (use installed version)
+RUN npm exec prisma generate
 
 # Build TypeScript
 RUN npm run build
@@ -21,9 +25,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
 # Install production dependencies only
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY prisma ./prisma
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+
+# Copy Prisma Client and CLI from builder stage (already generated with correct version)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
@@ -45,5 +57,9 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); })"
 
+# Copy startup script
+COPY --chown=nodejs:nodejs scripts/start-backend.sh ./start.sh
+RUN chmod +x ./start.sh
+
 # Start the application
-CMD ["node", "dist/index.js"]
+CMD ["./start.sh"]

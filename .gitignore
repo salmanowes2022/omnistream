@@ -143,3 +143,23 @@ vite.config.ts.timestamp-*
 # Test artifacts
 playwright-report/
 test-results/
+
+# Database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+prisma/*.db
+prisma/*.db-journal
+
+# RTMP media files
+media/
+*.flv
+
+# Accidentally copied node_modules files
+docs/platforms/*.js
+src/core/auth/*.js
+src/core/auth/*.json
+prisma/migrations/LICENSE
+prisma/migrations/README.md
+prisma/migrations/package.json

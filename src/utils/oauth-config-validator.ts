@@ -26,8 +26,7 @@ export class OAuthConfigValidator {
     // Validate Facebook configuration
     this.validateFacebookConfig(warnings, errors);
 
-    // Validate TikTok configuration
-    this.validateTikTokConfig(warnings, errors);
+    // Note: TikTok uses RTMP only, no OAuth validation needed
 
     // Check for environment-specific issues
     this.validateEnvironmentSpecificIssues(warnings, errors);
@@ -94,21 +93,7 @@ export class OAuthConfigValidator {
     }
   }
 
-  private static validateTikTokConfig(warnings: string[], errors: string[]): void {
-    if (!config.tiktok.clientKey || config.tiktok.clientKey === '') {
-      warnings.push('TIKTOK_CLIENT_KEY is not configured. TikTok OAuth will not work.');
-    }
-
-    if (!config.tiktok.clientSecret || config.tiktok.clientSecret === '') {
-      warnings.push('TIKTOK_CLIENT_SECRET is not configured. TikTok OAuth will not work.');
-    }
-
-    if (!config.tiktok.redirectUri || config.tiktok.redirectUri === '') {
-      errors.push('TIKTOK_REDIRECT_URI is not configured.');
-    } else {
-      this.validateRedirectUri('TikTok', config.tiktok.redirectUri, warnings, errors);
-    }
-  }
+  // TikTok validation removed - TikTok uses RTMP only, no OAuth
 
   private static validateRedirectUri(
     platform: string,
@@ -158,7 +143,6 @@ export class OAuthConfigValidator {
       const expectedPaths: Record<string, string> = {
         YouTube: '/api/v1/auth/youtube/callback',
         Facebook: '/api/v1/auth/facebook/callback',
-        TikTok: '/api/v1/auth/tiktok/callback',
       };
 
       const expectedPath = expectedPaths[platform];
@@ -176,11 +160,8 @@ export class OAuthConfigValidator {
     // Check for mismatched environments
     const youtubeUrl = this.parseUrl(config.youtube.redirectUri);
     const facebookUrl = this.parseUrl(config.facebook.redirectUri);
-    const tiktokUrl = this.parseUrl(config.tiktok.redirectUri);
 
-    const hosts = [youtubeUrl?.hostname, facebookUrl?.hostname, tiktokUrl?.hostname].filter(
-      Boolean
-    );
+    const hosts = [youtubeUrl?.hostname, facebookUrl?.hostname].filter(Boolean);
 
     // Check if all hosts are different (might indicate configuration issue)
     const uniqueHosts = new Set(hosts);

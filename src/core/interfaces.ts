@@ -10,6 +10,8 @@ export enum Platform {
   FACEBOOK = 'facebook',
   TIKTOK = 'tiktok',
   INSTAGRAM = 'instagram',
+  TWITTER = 'twitter',
+  TELEGRAM = 'telegram',
 }
 
 /**
@@ -18,6 +20,7 @@ export enum Platform {
 export enum StreamStatus {
   IDLE = 'idle',
   SCHEDULED = 'scheduled',
+  STARTING = 'starting',
   LIVE = 'live',
   ENDED = 'ended',
   ERROR = 'error',
@@ -79,6 +82,10 @@ export interface PlatformStream {
   status: StreamStatus;
   viewerCount?: number;
   error?: string;
+  rtmpUrl?: string; // Platform's RTMP ingest URL (e.g., YouTube's rtmps://...)
+  streamKey?: string; // Platform's stream key for RTMP ingestion
+  liveUrl?: string; // Public watch URL when stream is live
+  metadata?: Record<string, unknown>; // Platform-specific metadata
 }
 
 /**
@@ -202,6 +209,19 @@ export interface StreamProvider {
     messageId: string,
     tokens: OAuthToken
   ): Promise<boolean>;
+
+  /**
+   * Send a chat message to the live stream (if supported by platform)
+   * @param platformStreamId - Platform-specific stream ID or live chat ID
+   * @param text - Message body
+   * @param tokens - OAuth tokens for the platform
+   * @returns Status of the send
+   */
+  sendChatMessage(
+    platformStreamId: string,
+    text: string,
+    tokens: OAuthToken
+  ): Promise<{ status: 'success' | 'error' | 'unsupported'; error?: string }>;
 }
 
 /**

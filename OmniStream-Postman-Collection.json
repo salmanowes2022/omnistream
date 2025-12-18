@@ -1,0 +1,558 @@
+{
+  "info": {
+    "name": "OmniStream API",
+    "description": "Complete API collection for OmniStream multi-platform streaming service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "apiUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "communityId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "streamId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Get Server Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('token', response.data.token);",
+                  "    pm.collectionVariables.set('userId', response.data.user.id);",
+                  "    console.log('Token and userId saved to collection variables');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"MyPassword123\",\n  \"name\": \"Test User\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/user-auth/register",
+              "host": ["{{apiUrl}}"],
+              "path": ["user-auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('token', response.data.token);",
+                  "    pm.collectionVariables.set('userId', response.data.user.id);",
+                  "    console.log('Token and userId saved to collection variables');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@test.com\",\n  \"password\": \"Test1234\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/user-auth/login",
+              "host": ["{{apiUrl}}"],
+              "path": ["user-auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/user-auth/me",
+              "host": ["{{apiUrl}}"],
+              "path": ["user-auth", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/user-auth/logout",
+              "host": ["{{apiUrl}}"],
+              "path": ["user-auth", "logout"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Communities",
+      "item": [
+        {
+          "name": "Create Community",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('communityId', response.data.id);",
+                  "    console.log('Community ID saved:', response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Streaming Community\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/communities",
+              "host": ["{{apiUrl}}"],
+              "path": ["communities"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Communities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/communities",
+              "host": ["{{apiUrl}}"],
+              "path": ["communities"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Platforms (User)",
+      "item": [
+        {
+          "name": "Get Connected Platforms",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/platforms",
+              "host": ["{{apiUrl}}"],
+              "path": ["platforms"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get YouTube Auth URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/platforms/youtube/auth?userId={{userId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["platforms", "youtube", "auth"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disconnect Platform (YouTube)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/platforms/youtube",
+              "host": ["{{apiUrl}}"],
+              "path": ["platforms", "youtube"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Streams",
+      "item": [
+        {
+          "name": "Create Stream",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('streamId', response.data.stream.id);",
+                  "    console.log('Stream ID saved:', response.data.stream.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"communityId\": \"{{communityId}}\",\n  \"title\": \"My Live Stream\",\n  \"description\": \"Test stream description\",\n  \"scheduledStartTime\": \"2024-12-31T20:00:00.000Z\",\n  \"platforms\": [\"youtube\"]\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/streams",
+              "host": ["{{apiUrl}}"],
+              "path": ["streams"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Streams by Community",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/streams?communityId={{communityId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["streams"],
+              "query": [
+                {
+                  "key": "communityId",
+                  "value": "{{communityId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stream by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/streams/{{streamId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["streams", "{{streamId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Start Stream",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/streams/{{streamId}}/start?communityId={{communityId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["streams", "{{streamId}}", "start"],
+              "query": [
+                {
+                  "key": "communityId",
+                  "value": "{{communityId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Stop Stream",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/streams/{{streamId}}/stop?communityId={{communityId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["streams", "{{streamId}}", "stop"],
+              "query": [
+                {
+                  "key": "communityId",
+                  "value": "{{communityId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stream Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/streams/{{streamId}}/status?communityId={{communityId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["streams", "{{streamId}}", "status"],
+              "query": [
+                {
+                  "key": "communityId",
+                  "value": "{{communityId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Stream",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/streams/{{streamId}}?communityId={{communityId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["streams", "{{streamId}}"],
+              "query": [
+                {
+                  "key": "communityId",
+                  "value": "{{communityId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Schedule (Posts)",
+      "item": [
+        {
+          "name": "Create Scheduled Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Check out my upcoming stream!\",\n  \"platforms\": [\"youtube\", \"facebook\"],\n  \"scheduledTime\": \"2024-12-31T18:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/schedule",
+              "host": ["{{apiUrl}}"],
+              "path": ["schedule"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Scheduled Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/schedule",
+              "host": ["{{apiUrl}}"],
+              "path": ["schedule"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Get Chat Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/chat/messages?streamId={{streamId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["chat", "messages"],
+              "query": [
+                {
+                  "key": "streamId",
+                  "value": "{{streamId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
